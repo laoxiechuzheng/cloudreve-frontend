@@ -1,180 +1,81 @@
-import { withStyles } from "@material-ui/core";
-import AppBar from "@material-ui/core/AppBar";
-import Divider from "@material-ui/core/Divider";
-import Drawer from "@material-ui/core/Drawer";
-import MuiExpansionPanel from "@material-ui/core/ExpansionPanel";
-import MuiExpansionPanelDetails from "@material-ui/core/ExpansionPanelDetails";
-import MuiExpansionPanelSummary from "@material-ui/core/ExpansionPanelSummary";
-import IconButton from "@material-ui/core/IconButton";
-import List from "@material-ui/core/List";
-import ListItem from "@material-ui/core/ListItem";
-import ListItemIcon from "@material-ui/core/ListItemIcon";
-import ListItemText from "@material-ui/core/ListItemText";
-import { lighten, makeStyles, useTheme } from "@material-ui/core/styles";
-import Toolbar from "@material-ui/core/Toolbar";
-import Typography from "@material-ui/core/Typography";
+import React, { useEffect, useState } from "react";
 import {
-    Assignment,
-    Category,
-    CloudDownload,
-    Contacts,
-    Group,
-    Home,
-    Image,
-    InsertDriveFile,
-    Language,
-    ListAlt,
-    Mail,
-    Palette,
-    Person,
-    Settings,
-    SettingsEthernet,
-    Share,
-    Storage,
-    Contactless,
+    AppBar, Collapse, Divider, Drawer, IconButton, List, ListItem, ListItemIcon, ListItemText, makeStyles, Toolbar, Tooltip, Typography, useMediaQuery, useTheme
+} from "@material-ui/core";
+import {
+    Assignment, Category, CloudDownload, Contacts, Group, Home, Image, InsertDriveFile, Language, ListAlt, Mail, Palette, Person, Settings, SettingsEthernet, Share, Storage, Contactless, ExpandLess, ExpandMore, Close, Menu
 } from "@material-ui/icons";
-import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
-import ChevronRightIcon from "@material-ui/icons/ChevronRight";
-import MenuIcon from "@material-ui/icons/Menu";
-import clsx from "clsx";
-import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useHistory, useLocation } from "react-router";
 import { useRouteMatch } from "react-router-dom";
 import { changeSubTitle } from "../../redux/viewUpdate/action";
-import pathHelper from "../../utils/page";
+import Brand from "../Navbar/Brand";
 import UserAvatar from "../Navbar/UserAvatar";
 import { useTranslation } from "react-i18next";
 
-const ExpansionPanel = withStyles({
-    root: {
-        maxWidth: "100%",
-        boxShadow: "none",
-        "&:not(:last-child)": {
-            borderBottom: 0,
-        },
-        "&:before": {
-            display: "none",
-        },
-        "&$expanded": { margin: 0 },
-    },
-    expanded: {},
-})(MuiExpansionPanel);
-
-const ExpansionPanelSummary = withStyles({
-    root: {
-        minHeight: 0,
-        padding: 0,
-
-        "&$expanded": {
-            minHeight: 0,
-        },
-    },
-    content: {
-        maxWidth: "100%",
-        margin: 0,
-        display: "block",
-        "&$expanded": {
-            margin: "0",
-        },
-    },
-    expanded: {},
-})(MuiExpansionPanelSummary);
-
-const ExpansionPanelDetails = withStyles((theme) => ({
-    root: {
-        display: "block",
-        padding: theme.spacing(0),
-    },
-}))(MuiExpansionPanelDetails);
-
 const drawerWidth = 240;
-
 const useStyles = makeStyles((theme) => ({
     root: {
         display: "flex",
         width: "100%",
+        minHeight: "100vh"
     },
     appBar: {
-        zIndex: theme.zIndex.drawer + 1,
-        transition: theme.transitions.create(["width", "margin"], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-        }),
+        backgroundColor: theme.palette.background.paper,
+        color: theme.palette.text.primary
     },
-    appBarShift: {
-        marginLeft: drawerWidth,
-        width: `calc(100% - ${drawerWidth}px)`,
-        transition: theme.transitions.create(["width", "margin"], {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-        }),
+    header: {
+        gap: 12,
+        "& .MuiIconButton-root": {
+            width: 40,
+            height: 40,
+            flexShrink: 0
+        }
     },
-    menuButton: {
-        marginRight: 36,
-    },
-    hide: {
-        display: "none",
-    },
-    drawer: {
-        width: drawerWidth,
-        flexShrink: 0,
-        whiteSpace: "nowrap",
-    },
-    drawerOpen: {
-        width: drawerWidth,
-        transition: theme.transitions.create("width", {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-        }),
-    },
-    drawerClose: {
-        transition: theme.transitions.create("width", {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
-        }),
-        overflowX: "hidden",
-        width: theme.spacing(7) + 1,
-        [theme.breakpoints.up("sm")]: {
-            width: theme.spacing(9) + 1,
-        },
+    brand: {
+        flexShrink: 1,
+        minWidth: 0
     },
     title: {
-        flexGrow: 1,
-    },
-    toolbar: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-end",
-        padding: theme.spacing(0, 1),
-        ...theme.mixins.toolbar,
-    },
-    content: {
-        flexGrow: 1,
-        padding: theme.spacing(3),
-    },
-    sub: {
-        paddingLeft: 36,
         color: theme.palette.text.secondary,
+        paddingLeft: 20,
+        borderLeft: "1px solid " + theme.palette.divider,
+        [theme.breakpoints.down("sm")]: { display: "none" }
     },
-    subMenu: {
-        backgroundColor: theme.palette.background.default,
-        paddingTop: 0,
-        paddingBottom: 0,
-    },
-    active: {
-        backgroundColor: lighten(theme.palette.primary.main, 0.8),
-        color: theme.palette.primary.main,
-        "&:hover": {
-            backgroundColor: lighten(theme.palette.primary.main, 0.7),
+    grow: { flex: 1 },
+    drawerPaper: {
+        width: drawerWidth,
+        maxWidth: "calc(100vw - 48px)",
+        [theme.breakpoints.up("md")]: {
+            top: 64,
+            height: "calc(100% - 64px)"
         },
     },
-    activeText: {
-        fontWeight: 500,
+    drawerHeader: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "12px 16px"
     },
-    activeIcon: {
-        color: theme.palette.primary.main,
+    navigation: {
+        padding: "16px 12px",
+        "& .MuiListItem-root": {
+            borderRadius: 6,
+            marginBottom: 3,
+            minHeight: 42
+        },
+        "& .MuiListItemText-primary": { fontSize: "0.875rem" },
+        "& .MuiSvgIcon-root": { fontSize: 21 }
     },
+    subMenu: { padding: "2px 0 8px 16px" },
+    active: { "& .MuiListItemText-primary": { fontWeight: 600 } },
+    content: {
+        flex: 1,
+        minWidth: 0,
+        padding: theme.spacing(3),
+        [theme.breakpoints.down("sm")]: { padding: theme.spacing(2) }
+    },
+    toolbar: theme.mixins.toolbar,
 }));
 
 const items = [
@@ -272,187 +173,127 @@ const items = [
     },
 ];
 
+
 export default function Dashboard({ content }) {
     const { t } = useTranslation("dashboard");
     const classes = useStyles();
     const theme = useTheme();
-    const [open, setOpen] = useState(!pathHelper.isMobile());
+    const desktop = useMediaQuery(theme.breakpoints.up("md"));
+    const [desktopOpen, setDesktopOpen] = useState(true);
+    const [mobileOpen, setMobileOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(null);
     const history = useHistory();
     const location = useLocation();
-
-    const handleDrawerOpen = () => {
-        setOpen(true);
-    };
-
-    const handleDrawerClose = () => {
-        setOpen(false);
-    };
-
     const dispatch = useDispatch();
-    const SetSubTitle = useCallback(
-        (title) => dispatch(changeSubTitle(title)),
-        [dispatch]
-    );
-
-    useEffect(() => {
-        SetSubTitle(t("nav.title"));
-    }, []);
-
-    useEffect(() => {
-        return () => {
-            SetSubTitle();
-        };
-    }, []);
-
     const { path } = useRouteMatch();
+    const isActive = (route) => location.pathname === "/admin/" + route || location.pathname.startsWith("/admin/" + route + "/");
+
+    useEffect(() => {
+        dispatch(changeSubTitle(t("nav.title")));
+        return () => dispatch(changeSubTitle());
+    }, [dispatch, t]);
+
+    useEffect(() => {
+        setMobileOpen(false);
+        const parent = items.find((item) => item.sub && item.sub.some((sub) => isActive(sub.path)));
+        setMenuOpen(parent ? parent.title : null);
+    }, [location.pathname]);
+
+    const navigate = (route) => {
+        history.push("/admin/" + route);
+        setMobileOpen(false);
+    };
+    const routeItem = (item) => (
+        <ListItem
+            key={item.title}
+            button
+            selected={isActive(item.path)}
+            aria-current={isActive(item.path) ? "page" : undefined}
+            className={isActive(item.path) ? classes.active : undefined}
+            onClick={() => navigate(item.path)}
+        >
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={t(item.title)} />
+        </ListItem>
+    );
 
     return (
         <div className={classes.root}>
             <AppBar
                 position="fixed"
-                className={clsx(classes.appBar, {
-                    [classes.appBarShift]: open,
-                })}
+                className={classes.appBar}
+                color="default"
             >
-                <Toolbar>
-                    <IconButton
-                        color="inherit"
-                        aria-label="open drawer"
-                        onClick={handleDrawerOpen}
-                        edge="start"
-                        className={clsx(classes.menuButton, {
-                            [classes.hide]: open,
-                        })}
-                    >
-                        <MenuIcon />
-                    </IconButton>
-                    <Typography variant="h6" className={classes.title} noWrap>
-                        {t("nav.dashboard")}
-                    </Typography>
+                <Toolbar className={classes.header}>
+                    <Tooltip title={t("nav.title")}>
+                        <IconButton
+                            color="inherit"
+                            edge="start"
+                            aria-label={t("nav.title")}
+                            aria-expanded={desktop ? desktopOpen : mobileOpen}
+                            aria-controls="admin-navigation"
+                            onClick={() => desktop ? setDesktopOpen(!desktopOpen) : setMobileOpen(!mobileOpen)}
+                        ><Menu /></IconButton>
+                    </Tooltip>
+                    <Brand
+                        className={classes.brand}
+                        to="/admin/home"
+                    />
+                    <Typography
+                        variant="body2"
+                        className={classes.title}
+                    >{t("nav.title")}</Typography>
+                    <div className={classes.grow} />
                     <UserAvatar />
                 </Toolbar>
             </AppBar>
             <Drawer
-                variant="permanent"
-                className={clsx(classes.drawer, {
-                    [classes.drawerOpen]: open,
-                    [classes.drawerClose]: !open,
-                })}
-                classes={{
-                    paper: clsx({
-                        [classes.drawerOpen]: open,
-                        [classes.drawerClose]: !open,
-                    }),
+                variant={desktop ? "persistent" : "temporary"}
+                open={desktop ? desktopOpen : mobileOpen}
+                onClose={() => setMobileOpen(false)}
+                style={{
+                    width: desktop && desktopOpen ? drawerWidth : 0,
+                    flexShrink: 0
                 }}
+                classes={{ paper: classes.drawerPaper }}
+                ModalProps={{ keepMounted: true }}
             >
-                <div className={classes.toolbar}>
-                    <IconButton onClick={handleDrawerClose}>
-                        {theme.direction === "rtl" ? (
-                            <ChevronRightIcon />
-                        ) : (
-                            <ChevronLeftIcon />
-                        )}
-                    </IconButton>
-                </div>
-                <Divider />
-                <List className={classes.noPadding}>
-                    {items.map((item) => {
-                        if (item.path !== undefined) {
-                            return (
-                                <ListItem
-                                    onClick={() =>
-                                        history.push("/admin/" + item.path)
-                                    }
-                                    button
-                                    className={clsx({
-                                        [classes.active]: location.pathname.startsWith(
-                                            "/admin/" + item.path
-                                        ),
-                                    })}
-                                    key={item.title}
-                                >
-                                    <ListItemIcon
-                                        className={clsx({
-                                            [classes.activeIcon]: location.pathname.startsWith(
-                                                "/admin/" + item.path
-                                            ),
-                                        })}
-                                    >
-                                        {item.icon}
-                                    </ListItemIcon>
-                                    <ListItemText
-                                        className={clsx({
-                                            [classes.activeText]: location.pathname.startsWith(
-                                                "/admin/" + item.path
-                                            ),
-                                        })}
-                                        primary={t(item.title)}
-                                    />
-                                </ListItem>
-                            );
-                        }
-                        return (
-                            <ExpansionPanel
-                                key={item.title}
-                                square
-                                expanded={menuOpen === item.title}
-                                onChange={(event, isExpanded) => {
-                                    setMenuOpen(isExpanded ? item.title : null);
-                                }}
+                {!desktop && <><div className={classes.drawerHeader}><Brand to="/admin/home" /><IconButton
+                    aria-label={t("close", { ns: "common" })}
+                    onClick={() => setMobileOpen(false)}
+                ><Close /></IconButton></div><Divider /></>}
+                <List
+                    component="nav"
+                    id="admin-navigation"
+                    aria-label={t("nav.title")}
+                    className={classes.navigation}
+                >
+                    {items.map((item) => item.path ? routeItem(item) : (
+                        <React.Fragment key={item.title}>
+                            <ListItem
+                                button
+                                onClick={() => setMenuOpen(menuOpen === item.title ? null : item.title)}
+                                aria-expanded={menuOpen === item.title}
+                                aria-controls={"admin-group-" + item.title}
                             >
-                                <ExpansionPanelSummary
-                                    aria-controls="panel1d-content"
-                                    id="panel1d-header"
-                                >
-                                    <ListItem button key={item.title}>
-                                        <ListItemIcon>{item.icon}</ListItemIcon>
-                                        <ListItemText primary={t(item.title)} />
-                                    </ListItem>
-                                </ExpansionPanelSummary>
-                                <ExpansionPanelDetails>
-                                    <List className={classes.subMenu}>
-                                        {item.sub.map((sub) => (
-                                            <ListItem
-                                                onClick={() =>
-                                                    history.push(
-                                                        "/admin/" + sub.path
-                                                    )
-                                                }
-                                                className={clsx({
-                                                    [classes.sub]: open,
-                                                    [classes.active]: location.pathname.startsWith(
-                                                        "/admin/" + sub.path
-                                                    ),
-                                                })}
-                                                button
-                                                key={sub.title}
-                                            >
-                                                <ListItemIcon
-                                                    className={clsx({
-                                                        [classes.activeIcon]: location.pathname.startsWith(
-                                                            "/admin/" + sub.path
-                                                        ),
-                                                    })}
-                                                >
-                                                    {sub.icon}
-                                                </ListItemIcon>
-                                                <ListItemText
-                                                    primary={t(sub.title)}
-                                                />
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                </ExpansionPanelDetails>
-                            </ExpansionPanel>
-                        );
-                    })}
+                                <ListItemIcon>{item.icon}</ListItemIcon><ListItemText primary={t(item.title)} />
+                                {menuOpen === item.title ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+                            </ListItem>
+                            <Collapse
+                                in={menuOpen === item.title}
+                                timeout="auto"
+                            >
+                                <List
+                                    dense
+                                    id={"admin-group-" + item.title}
+                                    className={classes.subMenu}
+                                >{item.sub.map(routeItem)}</List>
+                            </Collapse>
+                        </React.Fragment>
+                    ))}
                 </List>
             </Drawer>
-            <main className={classes.content}>
-                <div className={classes.toolbar} />
-                {content(path)}
-            </main>
+            <main className={classes.content}><div className={classes.toolbar} />{content(path)}</main>
         </div>
     );
 }

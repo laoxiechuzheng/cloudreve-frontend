@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import SearchIcon from "@material-ui/icons/Search";
-import { fade } from "@material-ui/core/styles/colorManipulator";
 import FileIcon from "@material-ui/icons/InsertDriveFile";
 import ShareIcon from "@material-ui/icons/Share";
 import { connect } from "react-redux";
@@ -45,54 +44,16 @@ const mapDispatchToProps = (dispatch) => {
 
 const styles = (theme) => ({
     search: {
-        [theme.breakpoints.down("sm")]: {
-            display: "none",
-        },
-        position: "relative",
-        borderRadius: theme.shape.borderRadius,
-        backgroundColor: fade(theme.palette.common.white, 0.15),
-        "&:hover": {
-            backgroundColor: fade(theme.palette.common.white, 0.25),
-        },
-        marginRight: theme.spacing(2),
-        marginLeft: 0,
-        width: "100%",
-        [theme.breakpoints.up("sm")]: {
-            marginLeft: theme.spacing(7.2),
-            width: "auto",
-        },
+        position: "relative", borderRadius: 6, border: "1px solid " + theme.palette.divider,
+        backgroundColor: theme.palette.background.default, marginLeft: 24,
+        width: "100%", maxWidth: 440, minWidth: 160, flex: 1,
+        [theme.breakpoints.down("sm")]: { display: "none" },
+        "&:focus-within": { borderColor: theme.palette.primary.main },
     },
-    searchIcon: {
-        width: theme.spacing(9),
-        height: "100%",
-        position: "absolute",
-        pointerEvents: "none",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    inputRoot: {
-        color: "inherit",
-        width: "100%",
-    },
-    inputInput: {
-        paddingTop: theme.spacing(1),
-        paddingRight: theme.spacing(1),
-        paddingBottom: theme.spacing(1),
-        paddingLeft: theme.spacing(7),
-        transition: theme.transitions.create("width"),
-        width: "100%",
-        [theme.breakpoints.up("md")]: {
-            width: 200,
-            "&:focus": {
-                width: 300,
-            },
-        },
-    },
-    suggestBox: {
-        zIndex: "9999",
-        width: 364,
-    },
+    searchIcon: { width: 40, height: "100%", position: "absolute", pointerEvents: "none", display: "flex", alignItems: "center", justifyContent: "center", color: theme.palette.text.secondary },
+    inputRoot: { color: theme.palette.text.primary, width: "100%" },
+    inputInput: { padding: "9px 12px 9px 40px", width: "100%", fontSize: "0.875rem" },
+    suggestBox: { zIndex: theme.zIndex.modal + 1, width: 440, maxWidth: "calc(100vw - 32px)" },
 });
 
 const keyMap = {
@@ -158,6 +119,7 @@ class SearchBarCompoment extends Component {
                 <HotKeys keyMap={keyMap} handlers={this.handlers}>
                     <InputBase
                         placeholder={t("navbar.searchPlaceholder")}
+                        inputProps={{ "aria-label": t("navbar.searchPlaceholder") }}
                         classes={{
                             root: classes.inputRoot,
                             input: classes.inputInput,
@@ -176,7 +138,7 @@ class SearchBarCompoment extends Component {
                 >
                     {({ TransitionProps }) => (
                         <Fade {...TransitionProps} timeout={350}>
-                            <Paper square={true}>
+                            <Paper>
                                 {isHomePage && (
                                     <MenuItem onClick={this.searchMyFile("")}>
                                         <ListItemIcon className={classes.icon}>

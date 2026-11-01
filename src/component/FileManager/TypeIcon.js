@@ -4,27 +4,25 @@ import ImageIcon from "@material-ui/icons/PhotoSizeSelectActual";
 import VideoIcon from "@material-ui/icons/Videocam";
 import AudioIcon from "@material-ui/icons/Audiotrack";
 import PdfIcon from "@material-ui/icons/PictureAsPdf";
-import {
-    Android,
-    FileExcelBox,
-    FilePowerpointBox,
-    FileWordBox,
-    LanguageC,
-    LanguageCpp,
-    LanguageGo,
-    LanguageJavascript,
-    LanguagePhp,
-    LanguagePython,
-    MagnetOn,
-    ScriptText,
-    WindowRestore,
-    ZipBox,
-} from "mdi-material-ui";
+import Android from "mdi-material-ui/Android";
+import FileExcelBox from "mdi-material-ui/FileExcelBox";
+import FilePowerpointBox from "mdi-material-ui/FilePowerpointBox";
+import FileWordBox from "mdi-material-ui/FileWordBox";
+import LanguageC from "mdi-material-ui/LanguageC";
+import LanguageCpp from "mdi-material-ui/LanguageCpp";
+import LanguageGo from "mdi-material-ui/LanguageGo";
+import LanguageJavascript from "mdi-material-ui/LanguageJavascript";
+import LanguagePhp from "mdi-material-ui/LanguagePhp";
+import LanguagePython from "mdi-material-ui/LanguagePython";
+import MagnetOn from "mdi-material-ui/MagnetOn";
+import ScriptText from "mdi-material-ui/ScriptText";
+import WindowRestore from "mdi-material-ui/WindowRestore";
+import ZipBox from "mdi-material-ui/ZipBox";
 import FileShowIcon from "@material-ui/icons/InsertDriveFile";
 import { lighten } from "@material-ui/core/styles";
 import useTheme from "@material-ui/core/styles/useTheme";
 import { Avatar } from "@material-ui/core";
-import { MenuBook } from "@material-ui/icons";
+import MenuBook from "@material-ui/icons/MenuBook";
 
 const icons = {
     audio: {

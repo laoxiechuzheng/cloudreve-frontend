@@ -1,10 +1,9 @@
+import AuthLayout, { useAuthStyles } from "./AuthLayout";
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import {
     Avatar,
     Button,
-    makeStyles,
-    Paper,
     Typography,
 } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
@@ -13,37 +12,6 @@ import EmailIcon from "@material-ui/icons/EmailOutlined";
 import { useLocation } from "react-router";
 import { toggleSnackbar } from "../../redux/explorer";
 import { useTranslation } from "react-i18next";
-
-const useStyles = makeStyles((theme) => ({
-    layout: {
-        width: "auto",
-        marginTop: "110px",
-        marginLeft: theme.spacing(3),
-        marginRight: theme.spacing(3),
-        [theme.breakpoints.up("sm")]: {
-            width: 400,
-            marginLeft: "auto",
-            marginRight: "auto",
-        },
-        marginBottom: 110,
-    },
-    paper: {
-        marginTop: theme.spacing(8),
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: `${theme.spacing(2)}px ${theme.spacing(3)}px ${theme.spacing(
-            3
-        )}px`,
-    },
-    avatar: {
-        margin: theme.spacing(1),
-        backgroundColor: theme.palette.secondary.main,
-    },
-    submit: {
-        marginTop: theme.spacing(3),
-    },
-}));
 
 function useQuery() {
     return new URLSearchParams(useLocation().search);
@@ -65,7 +33,7 @@ function Activation() {
     );
     const history = useHistory();
 
-    const classes = useStyles();
+    const classes = useAuthStyles();
 
     useEffect(() => {
         API.get(
@@ -83,9 +51,9 @@ function Activation() {
     }, [location]);
 
     return (
-        <div className={classes.layout}>
+        <AuthLayout>
             {success && (
-                <Paper className={classes.paper}>
+                <div className={classes.paper}>
                     <Avatar className={classes.avatar}>
                         <EmailIcon />
                     </Avatar>
@@ -105,9 +73,9 @@ function Activation() {
                     >
                         {t("login.backToSingIn")}
                     </Button>
-                </Paper>
+                </div>
             )}
-        </div>
+        </AuthLayout>
     );
 }
 

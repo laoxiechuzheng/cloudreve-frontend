@@ -12,6 +12,8 @@ export default function FolderDropWarpper({
     handleDoubleClick,
     className,
     pref,
+    actions,
+    onOpen,
 }) {
     const [{ canDrop, isOver }, drop] = useDrop({
         accept: "object",
@@ -29,6 +31,8 @@ export default function FolderDropWarpper({
                     folder={folder}
                     onIconClick={onIconClick}
                     isActive={isActive}
+                    actions={actions}
+                    onOpen={onOpen}
                 />
             </div>
         );
@@ -44,6 +48,8 @@ export default function FolderDropWarpper({
             handleDoubleClick={handleDoubleClick}
             file={folder}
             isActive={isActive}
+            actions={actions}
+            onOpen={onOpen}
         />
     );
 }

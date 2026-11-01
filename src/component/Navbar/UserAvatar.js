@@ -39,11 +39,10 @@ const mapDispatchToProps = (dispatch) => {
 
 const styles = (theme) => ({
     mobileHidden: {
-        [theme.breakpoints.down("xs")]: {
-            display: "none",
-        },
+        flexShrink: 0,
         whiteSpace: "nowrap",
     },
+    settingButton: { [theme.breakpoints.down("xs")]: { display: "none" } },
     avatar: {
         width: "30px",
         height: "30px",
@@ -108,9 +107,9 @@ class UserAvatarCompoment extends Component {
                     }
                 >
                     <div>
+                        <DarkModeSwitcher />
                         {!isAdminPage && (
                             <>
-                                <DarkModeSwitcher position="top" />
                                 {loginCheck && (
                                     <>
                                         <Tooltip
@@ -118,6 +117,8 @@ class UserAvatarCompoment extends Component {
                                             placement="bottom"
                                         >
                                             <IconButton
+                                                aria-label={t("navbar.setting")}
+                                                className={classes.settingButton}
                                                 onClick={() =>
                                                     this.props.history.push(
                                                         "/setting?"
@@ -139,13 +140,14 @@ class UserAvatarCompoment extends Component {
                             >
                                 <IconButton
                                     color="inherit"
+                                    aria-label={t("navbar.backToHomepage")}
                                     onClick={this.returnHome}
                                 >
                                     <Home />
                                 </IconButton>
                             </Tooltip>
                         )}
-                        <IconButton color="inherit" onClick={this.showUserInfo}>
+                        <IconButton aria-label={t("navbar.myProfile")} color="inherit" onClick={this.showUserInfo}>
                             {!loginCheck && <AccountCircle />}
                             {loginCheck && (
                                 <Avatar

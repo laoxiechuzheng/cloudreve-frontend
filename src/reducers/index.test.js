@@ -1,13 +1,15 @@
-import configureMockStore from "redux-mock-store";
+import { applyMiddleware, createStore } from "redux";
 import thunk from "redux-thunk";
-import cloudreveApp, { initState as cloudreveState } from "./index";
+import createReducer, { initState as cloudreveState } from "./index";
+import { createMemoryHistory } from "history";
 import { initState as viewUpdateState } from "../redux/viewUpdate/reducer";
 import { initState as explorerState } from "../redux/explorer/reducer";
 
-import { changeSubTitle, setSubtitle } from "../redux/viewUpdate/action";
+import { changeSubTitle, setPagination, setSubtitle } from "../redux/viewUpdate/action";
 import {
     addSelectedTargets,
     changeSortMethod,
+    openTorrentDownload,
     removeSelectedTargets,
     setDirList,
     setFileList,
@@ -37,15 +39,118 @@ import {
     toggleSnackbar
 } from "../redux/explorer";
 
+jest.mock("../i18n", () => {
+    const i18n = require("i18next").createInstance();
+    i18n.init({
+        lng: "zh-CN",
+        defaultNS: "application",
+        initImmediate: false,
+        resources: {
+            "zh-CN": { application: require("../../public/locales/zh-CN/application.json") },
+        },
+    });
+    global.window.subTitle = "Cloudreve";
+    return i18n;
+});
+
+// App reducers are tested separately from the router factory's own state.
+const rootReducer = createReducer(createMemoryHistory());
+const cloudreveApp = (state, action) => {
+    const { router, ...application } = rootReducer(state, action);
+    return application;
+};
+
 const initState = {
     ...cloudreveState,
     viewUpdate: viewUpdateState,
     explorer: explorerState,
 };
-const middlewares = [thunk];
-const mockStore = configureMockStore(middlewares);
+const createTestStore = (state) => {
+    const actions = [];
+    const recordActions = () => (next) => (action) => {
+        actions.push(action);
+        return next(action);
+    };
+    const store = createStore(
+        cloudreveApp,
+        state,
+        applyMiddleware(thunk, recordActions)
+    );
+    return { ...store, getActions: () => actions };
+};
+
+const createFile = (overrides = {}) => ({
+    id: "file-1",
+    name: "document.txt",
+    type: "file",
+    size: 10,
+    date: "2020-04-30T00:00:00Z",
+    create_date: "2020-04-29T00:00:00Z",
+    path: "/",
+    source_enabled: false,
+    ...overrides,
+});
+
+const createSortableLists = () => {
+    // Creation and modification dates deliberately produce different orders.
+    const fileList = [
+        createFile({
+            id: "file-1",
+            name: "b10",
+            size: 11,
+            create_date: "2020-05-01T00:00:00Z",
+            date: "2020-04-29T00:00:00Z",
+        }),
+        createFile({
+            id: "file-2",
+            name: "b2",
+            size: 110,
+            create_date: "2020-04-29T00:00:00Z",
+            date: "2020-04-30T00:00:00Z",
+        }),
+        createFile({
+            id: "file-3",
+            name: "z",
+            size: 10,
+            create_date: "2020-04-30T00:00:00Z",
+            date: "2020-05-01T00:00:00Z",
+        }),
+    ].map((file) => Object.freeze(file));
+    const dirList = fileList.map((file) => Object.freeze({
+        ...file,
+        id: "dir-" + file.id,
+        name: file.name + "_dir",
+        type: "dir",
+    }));
+    return {
+        fileList: Object.freeze(fileList),
+        dirList: Object.freeze(dirList),
+    };
+};
+
+// Hand-checked order, independent of the production comparators.
+const sortCases = [
+    ["sizePos", [2, 0, 1]],
+    ["sizeRes", [1, 0, 2]],
+    ["namePos", [1, 0, 2]],
+    ["nameRev", [2, 0, 1]],
+    ["timePos", [1, 2, 0]],
+    ["timeRev", [0, 2, 1]],
+];
 
 describe("index reducer", () => {
+    beforeEach(() => {
+        localStorage.clear();
+        document.title = initState.siteConfig.title;
+        delete window.currntPath;
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        document.title = initState.siteConfig.title;
+        delete window.currntPath;
+    });
+
     it("should return the initial state", () => {
         expect(cloudreveApp(undefined, { type: "@@INIT" })).toEqual(initState);
     });
@@ -99,150 +204,33 @@ describe("index reducer", () => {
     });
 
     describe("CHANGE_SORT_METHOD", () => {
-        const explorerState = {
-            fileList: [
-                {
-                    type: "file",
-                    name: "b",
-                    size: 10,
-                    date: "2020/04/30",
-                },
-                {
-                    type: "file",
-                    name: "a",
-                    size: 11,
-                    date: "2020/05/01",
-                },
-                {
-                    type: "file",
-                    name: "z",
-                    size: 110,
-                    date: "2020/04/29",
-                },
-            ],
-            dirList: [
-                {
-                    type: "dir",
-                    name: "b_dir",
-                    size: 10,
-                    date: "2020/04/30",
-                },
-                {
-                    type: "dir",
-                    name: "a_dir",
-                    size: 11,
-                    date: "2020/05/01",
-                },
-                {
-                    type: "dir",
-                    name: "z_dir",
-                    size: 110,
-                    date: "2020/04/29",
-                },
-            ],
-        };
-
-        const state = {
-            ...initState,
-            explorer: {
-                ...initState.explorer,
-                ...explorerState,
-            },
-        };
-        it("should handle sizePos", async () => {
-            const action = changeSortMethod("sizePos");
-            const sortFunc = (a, b) => {
-                return a.size - b.size;
+        it.each(sortCases)("should handle %s", async (method, order) => {
+            const { fileList, dirList } = createSortableLists();
+            const state = {
+                ...initState,
+                explorer: { ...initState.explorer, fileList, dirList },
             };
-            const fileList = explorerState.fileList;
-            const dirList = explorerState.dirList;
-            const store = mockStore(state);
-            await store.dispatch(action);
+            const expectedFiles = order.map((index) => fileList[index]);
+            const expectedDirs = order.map((index) => dirList[index]);
+            const store = createTestStore(state);
+            await store.dispatch(changeSortMethod(method));
             expect(store.getActions()).toEqual([
-                setSortMethod("sizePos"),
-                setDirList(dirList.sort(sortFunc)),
-                setFileList(fileList.sort(sortFunc)),
+                setSortMethod(method),
+                setDirList(expectedDirs),
+                setFileList(expectedFiles),
             ]);
-        });
-
-        it("should handle sizeRes", async () => {
-            const action = changeSortMethod("sizePos");
-            const sortFunc = (a, b) => {
-                return b.size - a.size;
-            };
-            const fileList = explorerState.fileList;
-            const dirList = explorerState.dirList;
-            const store = mockStore(state);
-            await store.dispatch(action);
-            expect(store.getActions()).toEqual([
-                setSortMethod("sizePos"),
-                setDirList(dirList.sort(sortFunc)),
-                setFileList(fileList.sort(sortFunc)),
-            ]);
-        });
-
-        it("should handle namePos", async () => {
-            const action = changeSortMethod("namePos");
-            const sortFunc = (a, b) => {
-                return a.name.localeCompare(b.name);
-            };
-            const fileList = explorerState.fileList;
-            const dirList = explorerState.dirList;
-            const store = mockStore(state);
-            await store.dispatch(action);
-            expect(store.getActions()).toEqual([
-                setSortMethod("namePos"),
-                setDirList(dirList.sort(sortFunc)),
-                setFileList(fileList.sort(sortFunc)),
-            ]);
-        });
-
-        it("should handle nameRev", async () => {
-            const action = changeSortMethod("nameRev");
-            const sortFunc = (a, b) => {
-                return b.name.localeCompare(a.name);
-            };
-            const fileList = explorerState.fileList;
-            const dirList = explorerState.dirList;
-            const store = mockStore(state);
-            await store.dispatch(action);
-            expect(store.getActions()).toEqual([
-                setSortMethod("nameRev"),
-                setDirList(dirList.sort(sortFunc)),
-                setFileList(fileList.sort(sortFunc)),
-            ]);
-        });
-
-        it("should handle timePos", async () => {
-            const action = changeSortMethod("timePos");
-            const sortFunc = (a, b) => {
-                return Date.parse(a.date) - Date.parse(b.date);
-            };
-            const fileList = explorerState.fileList;
-            const dirList = explorerState.dirList;
-            const store = mockStore(state);
-            await store.dispatch(action);
-            expect(store.getActions()).toEqual([
-                setSortMethod("timePos"),
-                setDirList(dirList.sort(sortFunc)),
-                setFileList(fileList.sort(sortFunc)),
-            ]);
-        });
-
-        it("should handle timeRev", async () => {
-            const action = changeSortMethod("timeRev");
-            const sortFunc = (a, b) => {
-                return Date.parse(b.date) - Date.parse(a.date);
-            };
-            const fileList = explorerState.fileList;
-            const dirList = explorerState.dirList;
-            const store = mockStore(state);
-            await store.dispatch(action);
-            expect(store.getActions()).toEqual([
-                setSortMethod("timeRev"),
-                setDirList(dirList.sort(sortFunc)),
-                setFileList(fileList.sort(sortFunc)),
-            ]);
+            expect(store.getState()).toEqual({
+                ...state,
+                viewUpdate: { ...state.viewUpdate, sortMethod: method },
+                explorer: {
+                    ...state.explorer,
+                    fileList: expectedFiles,
+                    dirList: expectedDirs,
+                },
+            });
+            expect(JSON.parse(localStorage.getItem("user_preference"))).toEqual({
+                sort: method,
+            });
         });
     });
 
@@ -304,159 +292,46 @@ describe("index reducer", () => {
     });
 
     describe("UPDATE_FILE_LIST", () => {
-        const fileList = [
-            {
-                type: "file",
-                name: "b",
-                size: 10,
-                date: "2020/04/30",
-            },
-            {
-                type: "file",
-                name: "a",
-                size: 11,
-                date: "2020/05/01",
-            },
-            {
-                type: "file",
-                name: "z",
-                size: 110,
-                date: "2020/04/29",
-            },
-        ];
-        const dirList = [
-            {
-                type: "dir",
-                name: "b_dir",
-                size: 10,
-                date: "2020/04/30",
-            },
-            {
-                type: "dir",
-                name: "a_dir",
-                size: 11,
-                date: "2020/05/01",
-            },
-            {
-                type: "dir",
-                name: "z_dir",
-                size: 110,
-                date: "2020/04/29",
-            },
-        ];
-        const updateAction = updateFileList([...fileList, ...dirList]);
-        it("should handle sizePos", async () => {
-            const sortFun = (a, b) => {
-                return a.size - b.size;
-            };
-            const state = {
-                ...initState,
-                viewUpdate: {
-                    ...initState.viewUpdate,
-                    sortMethod: "sizePos",
-                },
-            };
-            const store = mockStore(state);
-            await store.dispatch(updateAction);
-            expect(store.getActions()).toEqual([
-                setDirList(dirList.sort(sortFun)),
-                setFileList(fileList.sort(sortFun)),
-            ]);
-        });
-
-        it("should handle sizeRes", async () => {
-            const sortFun = (a, b) => {
-                return b.size - a.size;
-            };
-            const state = {
-                ...initState,
-                viewUpdate: {
-                    ...initState.viewUpdate,
-                    sortMethod: "sizeRes",
-                },
-            };
-            const store = mockStore(state);
-            await store.dispatch(updateAction);
-            expect(store.getActions()).toEqual([
-                setDirList(dirList.sort(sortFun)),
-                setFileList(fileList.sort(sortFun)),
-            ]);
-        });
-
-        it("should handle namePos", async () => {
-            const sortFun = (a, b) => {
-                return a.name.localeCompare(b.name);
-            };
-            const state = {
-                ...initState,
-                viewUpdate: {
-                    ...initState.viewUpdate,
-                    sortMethod: "namePos",
-                },
-            };
-            const store = mockStore(state);
-            await store.dispatch(updateAction);
-            expect(store.getActions()).toEqual([
-                setDirList(dirList.sort(sortFun)),
-                setFileList(fileList.sort(sortFun)),
-            ]);
-        });
-
-        it("should handle nameRev", async () => {
-            const sortFun = (a, b) => {
-                return b.name.localeCompare(a.name);
-            };
-            const state = {
-                ...initState,
-                viewUpdate: {
-                    ...initState.viewUpdate,
-                    sortMethod: "nameRev",
-                },
-            };
-            const store = mockStore(state);
-            await store.dispatch(updateAction);
-            expect(store.getActions()).toEqual([
-                setDirList(dirList.sort(sortFun)),
-                setFileList(fileList.sort(sortFun)),
-            ]);
-        });
-
-        it("should handle timePos", async () => {
-            const sortFun = (a, b) => {
-                return Date.parse(a.date) - Date.parse(b.date);
-            };
-            const state = {
-                ...initState,
-                viewUpdate: {
-                    ...initState.viewUpdate,
-                    sortMethod: "timePos",
-                },
-            };
-            const store = mockStore(state);
-            await store.dispatch(updateAction);
-            expect(store.getActions()).toEqual([
-                setDirList(dirList.sort(sortFun)),
-                setFileList(fileList.sort(sortFun)),
-            ]);
-        });
-
-        it("should handle timeRev", async () => {
-            const sortFun = (a, b) => {
-                return Date.parse(b.date) - Date.parse(a.date);
-            };
-            const state = {
-                ...initState,
-                viewUpdate: {
-                    ...initState.viewUpdate,
-                    sortMethod: "timeRev",
-                },
-            };
-            const store = mockStore(state);
-            await store.dispatch(updateAction);
-            expect(store.getActions()).toEqual([
-                setDirList(dirList.sort(sortFun)),
-                setFileList(fileList.sort(sortFun)),
-            ]);
+        it.each(sortCases)("should handle %s", async (method, order) => {
+            const paginationCases = [
+                { pagination: { page: 1, size: 100 }, corrected: { page: 1, size: 100 } },
+                { pagination: { page: 4, size: 2 }, corrected: { page: 3, size: 2 } },
+                { pagination: { page: 2, size: 2 } },
+                { pagination: { page: 1, size: -1 } },
+                { pagination: { page: 3, size: 2 }, corrected: { page: 1, size: 2 }, empty: true },
+            ];
+            for (const { pagination, corrected, empty } of paginationCases) {
+                const { fileList, dirList } = createSortableLists();
+                const list = Object.freeze(empty ? [] : [
+                    fileList[0], dirList[0], fileList[1], dirList[1], fileList[2], dirList[2],
+                ]);
+                const expectedFiles = empty ? [] : order.map((index) => fileList[index]);
+                const expectedDirs = empty ? [] : order.map((index) => dirList[index]);
+                const state = {
+                    ...initState,
+                    explorer: { ...initState.explorer, fileList, dirList },
+                    viewUpdate: { ...initState.viewUpdate, sortMethod: method, pagination },
+                };
+                const store = createTestStore(state);
+                await store.dispatch(updateFileList(list));
+                expect(store.getActions()).toEqual([
+                    setDirList(expectedDirs),
+                    setFileList(expectedFiles),
+                    ...(corrected ? [setPagination(corrected)] : []),
+                ]);
+                expect(store.getState()).toEqual({
+                    ...state,
+                    explorer: {
+                        ...state.explorer,
+                        fileList: expectedFiles,
+                        dirList: expectedDirs,
+                    },
+                    viewUpdate: {
+                        ...state.viewUpdate,
+                        pagination: corrected || pagination,
+                    },
+                });
+            }
         });
     });
 
@@ -541,125 +416,149 @@ describe("index reducer", () => {
     });
 
     it("should handle ADD_SELECTED_TARGETS", () => {
+        const existing = createFile({ id: "existing" });
         const newSelect = [
-            {
-                type: "file",
-            },
-            {
-                type: "dir",
-            },
+            createFile({ id: "new-file" }),
+            createFile({ id: "new-dir", type: "dir" }),
         ];
+        const state = cloudreveApp(initState, setSelectedTarget([existing]));
         const action = addSelectedTargets(newSelect);
-        expect(
-            cloudreveApp(
-                {
-                    ...initState,
-                    explorer: {
-                        ...initState.explorer,
-                        selected: [{ type: "file" }],
-                    },
-                },
-                action
-            )
-        ).toEqual({
+        expect(cloudreveApp(state, action)).toEqual({
             ...initState,
             explorer: {
                 ...initState.explorer,
-                selected: [{ type: "file" }, ...newSelect],
+                selected: [existing, ...newSelect],
                 selectProps: {
                     isMultiple: true,
                     withFolder: true,
                     withFile: true,
+                    withSourceEnabled: true,
                 },
             },
         });
     });
 
     it("should handle SET_SELECTED_TARGET", () => {
-        const newSelect = [
+        const file = createFile();
+        const sourceFile = createFile({ id: "source-file", source_enabled: true });
+        const folder = createFile({ id: "folder", type: "dir" });
+        const state = cloudreveApp(initState, setSelectedTarget([
+            createFile({ id: "previous-selection", source_enabled: true }),
+        ]));
+        const cases = [
             {
-                type: "file",
+                selected: [file, folder],
+                selectProps: { isMultiple: true, withFolder: true, withFile: true, withSourceEnabled: true },
             },
             {
-                type: "dir",
+                selected: [file],
+                selectProps: { isMultiple: false, withFolder: false, withFile: true, withSourceEnabled: false },
+            },
+            {
+                selected: [sourceFile],
+                selectProps: { isMultiple: false, withFolder: false, withFile: true, withSourceEnabled: true },
+            },
+            {
+                selected: [folder],
+                selectProps: { isMultiple: false, withFolder: true, withFile: false, withSourceEnabled: true },
+            },
+            {
+                selected: [],
+                selectProps: { isMultiple: false, withFolder: false, withFile: false, withSourceEnabled: false },
             },
         ];
-        const action = setSelectedTarget(newSelect);
-        expect(
-            cloudreveApp(
-                {
-                    ...initState,
-                    explorer: {
-                        ...initState.explorer,
-                        selected: [{ type: "file" }],
-                    },
+        for (const { selected, selectProps } of cases) {
+            expect(cloudreveApp(state, setSelectedTarget(selected))).toEqual({
+                ...initState,
+                explorer: {
+                    ...initState.explorer,
+                    selected,
+                    selectProps,
                 },
-                action
-            )
-        ).toEqual({
-            ...initState,
-            explorer: {
-                ...initState.explorer,
-                selected: newSelect,
-                selectProps: {
-                    isMultiple: true,
-                    withFolder: true,
-                    withFile: true,
-                },
-            },
-        });
+            });
+        }
     });
 
     it("should handle RMOVE_SELECTED_TARGETS", () => {
+        const sourceFile = createFile({ id: "1", source_enabled: true });
+        const remainingFile = createFile({ id: "2" });
+        const state = cloudreveApp(initState, setSelectedTarget([sourceFile, remainingFile]));
         const remove = ["1"];
         const action = removeSelectedTargets(remove);
-        expect(
-            cloudreveApp(
-                {
-                    ...initState,
-                    explorer: {
-                        ...initState.explorer,
-                        selected: [
-                            { id: "1", type: "file" },
-                            { id: "2", type: "file" },
-                        ],
-                    },
-                },
-                action
-            )
-        ).toEqual({
+        const nextState = cloudreveApp(state, action);
+        expect(nextState).toEqual({
             ...initState,
             explorer: {
                 ...initState.explorer,
-                selected: [{ id: "2", type: "file" }],
+                selected: [remainingFile],
                 selectProps: {
                     isMultiple: false,
                     withFolder: false,
                     withFile: true,
+                    withSourceEnabled: false,
                 },
             },
         });
+        expect(cloudreveApp(nextState, removeSelectedTargets(["2"]))).toEqual(initState);
     });
 
     it("should handle NAVIGATOR_TO", async () => {
-        const store = mockStore(initState);
-        const action = navigateTo("/somewhere");
-        await store.dispatch(action);
-        expect(store.getActions()).toEqual([setNavigator("/somewhere", true)]);
+        const navState = {
+            ...initState,
+            navigator: { ...initState.navigator, path: "/to/somewhere" },
+            viewUpdate: {
+                ...initState.viewUpdate,
+                pagination: { page: 3, size: 25 },
+            },
+        };
+        const cases = [
+            { path: "/somewhere", loading: true, pagination: { page: 1, size: 25 } },
+            { path: "/to/somewhere", loading: false, pagination: { page: 3, size: 25 } },
+        ];
+        for (const { path, loading, pagination } of cases) {
+            const store = createTestStore(navState);
+            await store.dispatch(navigateTo(path));
+            expect(store.getActions()).toEqual([
+                ...(loading ? [setPagination(pagination)] : []),
+                setNavigator(path, loading),
+            ]);
+            expect(store.getState()).toEqual({
+                ...navState,
+                navigator: { ...navState.navigator, path },
+                viewUpdate: { ...navState.viewUpdate, pagination, navigatorLoading: loading },
+                explorer: { ...navState.explorer, search: undefined },
+            });
+            expect(window.currntPath).toEqual(path);
+        }
     });
 
     it("should handle NAVIGATOR_UP", async () => {
-        const navState = {
-            ...initState,
-            navigator: {
-                ...initState.navigator,
-                path: "/to/somewhere",
-            },
-        };
-        const store = mockStore(navState);
-        const action = navigateUp();
-        await store.dispatch(action);
-        expect(store.getActions()).toEqual([setNavigator("/to", true)]);
+        const cases = [
+            { path: "/to/somewhere", parent: "/to", loading: true, page: 1 },
+            { path: "/to", parent: "/", loading: true, page: 1 },
+            { path: "/", parent: "/", loading: false, page: 3 },
+        ];
+        for (const { path, parent, loading, page } of cases) {
+            const navState = {
+                ...initState,
+                navigator: { ...initState.navigator, path },
+                viewUpdate: { ...initState.viewUpdate, pagination: { page: 3, size: 25 } },
+            };
+            const pagination = { page, size: 25 };
+            const store = createTestStore(navState);
+            await store.dispatch(navigateUp());
+            expect(store.getActions()).toEqual([
+                ...(loading ? [setPagination(pagination)] : []),
+                setNavigator(parent, loading),
+            ]);
+            expect(store.getState()).toEqual({
+                ...navState,
+                navigator: { ...navState.navigator, path: parent },
+                viewUpdate: { ...navState.viewUpdate, pagination, navigatorLoading: loading },
+                explorer: { ...navState.explorer, search: undefined },
+            });
+            expect(window.currntPath).toEqual(parent);
+        }
     });
 
     it("should handle SET_NAVIGATOR", () => {
@@ -668,6 +567,23 @@ describe("index reducer", () => {
             navigator: {
                 ...initState.navigator,
                 path: "/to/somewhere",
+            },
+            viewUpdate: {
+                ...initState.viewUpdate,
+                contextOpen: true,
+                navigatorError: true,
+                navigatorLoading: false,
+            },
+            explorer: {
+                ...initState.explorer,
+                selected: [createFile({ source_enabled: true })],
+                selectProps: {
+                    isMultiple: false,
+                    withFolder: false,
+                    withFile: true,
+                    withSourceEnabled: true,
+                },
+                search: { keywords: "keywords/previous", searchPath: "/to" },
             },
         };
         const action = setNavigator("/newpath", true);
@@ -690,8 +606,9 @@ describe("index reducer", () => {
                     isMultiple: false,
                     withFolder: false,
                     withFile: false,
+                    withSourceEnabled: false,
                 },
-                keywords: "",
+                search: undefined,
             },
         });
         expect(window.currntPath).toEqual("/newpath");
@@ -914,15 +831,24 @@ describe("index reducer", () => {
         });
     });
 
-    it("should handle OPEN_TORRENT_DOWNLOAD_DIALOG", () => {
-        const action = openTorrentDownloadDialog();
-        expect(cloudreveApp(initState, action)).toEqual({
-            ...initState,
+    it("should handle OPEN_TORRENT_DOWNLOAD_DIALOG", async () => {
+        const torrent = createFile({ id: "torrent", name: "archive.torrent" });
+        const selectedState = cloudreveApp(initState, setSelectedTarget([torrent]));
+        const state = {
+            ...selectedState,
+            viewUpdate: { ...selectedState.viewUpdate, contextOpen: true },
+        };
+        const store = createTestStore(state);
+        await store.dispatch(openTorrentDownload());
+        expect(store.getActions()).toEqual([openTorrentDownloadDialog(torrent)]);
+        expect(store.getState()).toEqual({
+            ...state,
             viewUpdate: {
-                ...initState.viewUpdate,
+                ...state.viewUpdate,
                 modals: {
-                    ...initState.viewUpdate.modals,
-                    torrentDownload: true,
+                    ...state.viewUpdate.modals,
+                    remoteDownload: true,
+                    remoteDownloadTorrent: torrent,
                 },
                 contextOpen: false,
             },
@@ -960,18 +886,27 @@ describe("index reducer", () => {
     });
 
     it("should handle OPEN_GET_SOURCE_DIALOG", () => {
-        const action = openGetSourceDialog();
-        expect(cloudreveApp(initState, action)).toEqual({
+        const sources = [
+            "https://files.example.test/document.txt",
+            "a.txt: https://files.example.test/a.txt\nb.txt: https://files.example.test/b.txt",
+        ];
+        const state = {
             ...initState,
-            viewUpdate: {
-                ...initState.viewUpdate,
-                modals: {
-                    ...initState.viewUpdate.modals,
-                    getSource: true,
+            viewUpdate: { ...initState.viewUpdate, contextOpen: true },
+        };
+        for (const source of sources) {
+            expect(cloudreveApp(state, openGetSourceDialog(source))).toEqual({
+                ...initState,
+                viewUpdate: {
+                    ...initState.viewUpdate,
+                    modals: {
+                        ...initState.viewUpdate.modals,
+                        getSource: source,
+                    },
+                    contextOpen: false,
                 },
-                contextOpen: false,
-            },
-        });
+            });
+        }
     });
 
     it("should handle OPEN_COPY_DIALOG", () => {
@@ -1006,37 +941,94 @@ describe("index reducer", () => {
     });
 
     it("should handle CLOSE_ALL_MODALS", () => {
+        const openState = {
+            ...initState,
+            viewUpdate: {
+                ...initState.viewUpdate,
+                modals: {
+                    ...initState.viewUpdate.modals,
+                    createNewFolder: true,
+                    createNewFile: true,
+                    rename: true,
+                    move: true,
+                    remove: true,
+                    share: true,
+                    music: true,
+                    remoteDownload: true,
+                    remoteDownloadTorrent: createFile({ name: "archive.torrent" }),
+                    getSource: "https://files.example.test/document.txt",
+                    resave: true,
+                    copy: true,
+                    loading: true,
+                    loadingText: "loading",
+                    compress: true,
+                    decompress: true,
+                    option: {
+                        options: [{ key: "server", name: "Server", open: true }],
+                        title: "Download method",
+                        callback: jest.fn(),
+                        onClose: jest.fn(),
+                    },
+                    directoryDownloading: true,
+                    directoryDownloadLog: "Downloaded document.txt",
+                    directoryDownloadDone: true,
+                },
+            },
+        };
         const action = closeAllModals();
-        expect(cloudreveApp(initState, action)).toEqual({
+        const closedState = cloudreveApp(openState, action);
+        expect(closedState).toEqual({
             ...initState,
             viewUpdate: {
                 ...initState.viewUpdate,
                 modals: {
                     ...initState.viewUpdate.modals,
                     createNewFolder: false,
+                    createNewFile: false,
                     rename: false,
                     move: false,
                     remove: false,
                     share: false,
                     music: false,
                     remoteDownload: false,
-                    torrentDownload: false,
-                    getSource: false,
+                    remoteDownloadTorrent: null,
+                    getSource: "",
                     resave: false,
                     copy: false,
                     loading: false,
+                    loadingText: "loading",
                     compress: false,
                     decompress: false,
+                    option: undefined,
+                    directoryDownloading: false,
+                    directoryDownloadLog: "",
+                    directoryDownloadDone: false,
+                },
+            },
+        });
+        expect(cloudreveApp(closedState, action)).toEqual(closedState);
+        expect(cloudreveApp(closedState, openRemoteDownloadDialog())).toEqual({
+            ...closedState,
+            viewUpdate: {
+                ...closedState.viewUpdate,
+                modals: {
+                    ...closedState.viewUpdate.modals,
+                    remoteDownload: true,
+                    remoteDownloadTorrent: null,
                 },
             },
         });
     });
 
     it("should handle CHANGE_SUB_TITLE", async () => {
-        const store = mockStore(initState);
+        const store = createTestStore(initState);
         const action = changeSubTitle("test sub title");
         await store.dispatch(action);
         expect(store.getActions()).toEqual([setSubtitle("test sub title")]);
+        expect(store.getState()).toEqual({
+            ...initState,
+            viewUpdate: { ...initState.viewUpdate, subTitle: "test sub title" },
+        });
         expect(document.title).toEqual("test sub title - Cloudreve");
     });
 
@@ -1096,28 +1088,62 @@ describe("index reducer", () => {
     });
 
     it("should handle REFRESH_FILE_LIST", () => {
-        const action = refreshFileList();
-        expect(cloudreveApp(initState, action)).toEqual({
+        const search = { keywords: "keywords/report", searchPath: "/documents" };
+        const state = {
             ...initState,
+            navigator: { ...initState.navigator, path: "/搜索结果" },
+            explorer: {
+                ...initState.explorer,
+                search,
+                selected: [createFile({ source_enabled: true }), createFile({ type: "dir", id: "folder" })],
+                selectProps: { isMultiple: true, withFolder: true, withFile: true, withSourceEnabled: true },
+            },
+        };
+        const action = refreshFileList();
+        const refreshedState = cloudreveApp(state, action);
+        expect(refreshedState).toEqual({
+            ...state,
             navigator: {
-                ...initState.navigator,
+                ...state.navigator,
                 refresh: false,
             },
             explorer: {
                 ...initState.explorer,
+                search,
                 selected: [],
                 selectProps: {
                     isMultiple: false,
                     withFolder: false,
                     withFile: false,
+                    withSourceEnabled: false,
                 },
             },
+        });
+        expect(cloudreveApp(refreshedState, action)).toEqual({
+            ...refreshedState,
+            navigator: { ...refreshedState.navigator, refresh: true },
         });
     });
 
     it("should handle SEARCH_MY_FILE", () => {
-        const action = searchMyFile("keyword");
-        expect(cloudreveApp(initState, action)).toEqual({
+        const state = {
+            ...initState,
+            navigator: { ...initState.navigator, path: "/documents" },
+            viewUpdate: {
+                ...initState.viewUpdate,
+                contextOpen: true,
+                navigatorError: true,
+                navigatorLoading: false,
+            },
+            explorer: {
+                ...initState.explorer,
+                selected: [createFile({ source_enabled: true }), createFile({ type: "dir", id: "folder" })],
+                selectProps: { isMultiple: true, withFolder: true, withFile: true, withSourceEnabled: true },
+            },
+        };
+        const action = searchMyFile("keywords/report", "/documents");
+        const searchState = cloudreveApp(state, action);
+        expect(searchState).toEqual({
             ...initState,
             navigator: {
                 ...initState.navigator,
@@ -1137,9 +1163,25 @@ describe("index reducer", () => {
                     isMultiple: false,
                     withFolder: false,
                     withFile: false,
+                    withSourceEnabled: false,
                 },
-                keywords: "keyword",
+                search: { keywords: "keywords/report", searchPath: "/documents" },
             },
+        });
+        // Once on the results path, toggling refresh makes Navigator load again.
+        const nextSearch = searchMyFile("keywords/invoice", "");
+        const repeatedState = cloudreveApp(searchState, nextSearch);
+        expect(repeatedState).toEqual({
+            ...searchState,
+            navigator: { ...searchState.navigator, refresh: false },
+            explorer: {
+                ...searchState.explorer,
+                search: { keywords: "keywords/invoice", searchPath: "" },
+            },
+        });
+        expect(cloudreveApp(repeatedState, nextSearch)).toEqual({
+            ...repeatedState,
+            navigator: { ...repeatedState.navigator, refresh: true },
         });
     });
 

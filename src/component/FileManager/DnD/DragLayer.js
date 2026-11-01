@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDragLayer } from "react-dnd";
 import Preview from "./Preview";
 import { useSelector } from "react-redux";
+import useDragScrolling from "./Scrolling";
 
 const layerStyles = {
     position: "fixed",
@@ -56,6 +57,17 @@ const CustomDragLayer = (props) => {
     const viewMethod = useSelector(
         (state) => state.viewUpdate.explorerViewMethod
     );
+    const {
+        addEventListenerForWindow,
+        removeEventListenerForWindow,
+    } = useDragScrolling();
+    // Pagination can unmount the drag source; this layer owns the full drag lifecycle.
+    useEffect(() => {
+        if (isDragging && itemType === "object") {
+            addEventListenerForWindow();
+            return removeEventListenerForWindow;
+        }
+    }, [isDragging, itemType, addEventListenerForWindow, removeEventListenerForWindow]);
     const image = useMemo(() => {
         switch (itemType) {
             case "object":

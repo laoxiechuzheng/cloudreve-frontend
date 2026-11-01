@@ -1,229 +1,94 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import { connect } from "react-redux";
-
+import React from "react";
+import { useSelector } from "react-redux";
+import { ButtonBase, IconButton, TableCell, TableRow, Typography, fade, makeStyles } from "@material-ui/core";
 import FolderIcon from "@material-ui/icons/Folder";
-import classNames from "classnames";
-import { sizeToString } from "../../utils/index";
-import {
-    fade,
-    TableCell,
-    TableRow,
-    Typography,
-    withStyles,
-} from "@material-ui/core";
-import TypeIcon from "./TypeIcon";
-import pathHelper from "../../utils/page";
-import statusHelper from "../../utils/page";
-import { withRouter } from "react-router";
 import KeyboardReturnIcon from "@material-ui/icons/KeyboardReturn";
 import CheckCircleRoundedIcon from "@material-ui/icons/CheckCircleRounded";
-import Grow from "@material-ui/core/Grow";
+import classNames from "classnames";
+import { sizeToString } from "../../utils";
 import { formatLocalTime } from "../../utils/datetime";
+import TypeIcon from "./TypeIcon";
 import FileName from "./FileName";
 
-const styles = (theme) => ({
-    selected: {
-        "&:hover": {},
-        backgroundColor: fade(theme.palette.primary.main, 0.18),
+const useStyles = makeStyles((theme) => ({
+    row: {
+        backgroundColor: theme.palette.background.paper,
+        "&:hover": { backgroundColor: theme.palette.action.hover },
+        "&$selected, &$selected:hover": { backgroundColor: fade(theme.palette.primary.main, 0.1) },
     },
+    selected: {},
+    active: { outline: "2px solid " + theme.palette.primary.main, outlineOffset: -2 },
+    cell: { padding: "8px 16px", borderBottomColor: theme.palette.divider },
+    nameCell: { minWidth: 0, paddingLeft: 12, paddingRight: 8 },
+    name: { display: "flex", alignItems: "center", minWidth: 0, gap: 10 },
+    selector: { padding: 8, flexShrink: 0, color: theme.palette.text.secondary },
+    checked: { color: theme.palette.primary.main },
+    nameButton: {
+        minWidth: 0, display: "block", textAlign: "left", borderRadius: 4,
+        "&:focus-visible": { outline: "2px solid " + theme.palette.primary.main },
+    },
+    text: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 },
+    meta: { color: theme.palette.text.secondary, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" },
+    hideAuto: { [theme.breakpoints.down("sm")]: { display: "none" } },
+    actions: {
+        width: 100, padding: "4px 12px 4px 0",
+        [theme.breakpoints.down("xs")]: { width: 84, paddingRight: 4 },
+    },
+}));
 
-    selectedShared: {
-        "&:hover": {},
-        backgroundColor: fade(theme.palette.primary.main, 0.18),
-    },
-
-    notSelected: {
-        "&:hover": {
-            backgroundColor: theme.palette.action.hover,
-        },
-    },
-    icon: {
-        verticalAlign: "middle",
-        marginRight: "20px",
-        color: theme.palette.text.secondary,
-    },
-    tableIcon: {
-        marginRight: "20px",
-        verticalAlign: "middle",
-    },
-    folderNameSelected: {
-        color:
-            theme.palette.type === "dark" ? "#fff" : theme.palette.primary.dark,
-        fontWeight: "500",
-        userSelect: "none",
-    },
-    folderNameNotSelected: {
-        color: theme.palette.text.secondary,
-        userSelect: "none",
-    },
-    folderName: {
-        marginRight: "20px",
-        display: "flex",
-        alignItems: "center",
-    },
-    hideAuto: {
-        [theme.breakpoints.down("sm")]: {
-            display: "none",
-        },
-    },
-    tableRow: {
-        padding: "10px 16px",
-    },
-    checkIcon: {
-        color: theme.palette.primary.main,
-    },
-    active: {
-        backgroundColor: fade(theme.palette.primary.main, 0.1),
-    },
-});
-
-const mapStateToProps = (state) => {
-    return {
-        selected: state.explorer.selected,
-    };
-};
-
-const mapDispatchToProps = () => {
-    return {};
-};
-
-class TableRowCompoment extends Component {
-    state = {};
-
-    shouldComponentUpdate(nextProps, nextState, nextContext) {
-        const isSelectedCurrent =
-            this.props.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        const isSelectedNext =
-            nextProps.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        if (
-            nextProps.selected !== this.props.selected &&
-            isSelectedCurrent === isSelectedNext
-        ) {
-            return false;
-        }
-
-        return true;
-    }
-
-    render() {
-        const { classes } = this.props;
-        const isShare = pathHelper.isSharePage(this.props.location.pathname);
-
-        let icon;
-        if (this.props.file.type === "dir") {
-            icon = <FolderIcon className={classes.icon} />;
-        } else if (this.props.file.type === "up") {
-            icon = <KeyboardReturnIcon className={classes.icon} />;
-        } else {
-            icon = (
-                <TypeIcon
-                    className={classes.tableIcon}
-                    fileName={this.props.file.name}
-                />
-            );
-        }
-        const isSelected =
-            this.props.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        const isMobile = statusHelper.isMobile();
-
-        return (
-            <TableRow
-                ref={this.props.pref}
-                onContextMenu={this.props.contextMenu}
-                onClick={this.props.handleClick}
-                onDoubleClick={this.props.handleDoubleClick.bind(this)}
-                className={classNames({
-                    [classes.selected]: isSelected && !isShare,
-                    [classes.selectedShared]: isSelected && isShare,
-                    [classes.notSelected]: !isSelected,
-                    [classes.active]: this.props.isActive,
-                })}
-            >
-                <TableCell
-                    ref={this.props.dref}
-                    component="th"
-                    scope="row"
-                    className={classes.tableRow}
-                >
-                    <Typography
-                        variant="body2"
-                        className={classNames(classes.folderName, {
-                            [classes.folderNameSelected]: isSelected,
-                            [classes.folderNameNotSelected]: !isSelected,
-                        })}
+export default function TableItem(props) {
+    const { file, actions, onOpen } = props;
+    const classes = useStyles();
+    const selected = useSelector((state) => state.explorer.selected);
+    const isSelected = selected.includes(file);
+    const icon = file.type === "dir" ? <FolderIcon /> : file.type === "up" ? <KeyboardReturnIcon /> : <TypeIcon fileName={file.name} />;
+    return (
+        <TableRow
+            ref={props.pref}
+            aria-selected={isSelected}
+            onContextMenu={props.contextMenu}
+            onClick={props.handleClick}
+            onDoubleClick={props.handleDoubleClick}
+            className={classNames(classes.row, props.className, {
+                [classes.selected]: isSelected,
+                [classes.active]: props.isActive,
+            })}
+        >
+            <TableCell ref={props.dref} component="th" scope="row" className={classNames(classes.cell, classes.nameCell)}>
+                <div className={classes.name}>
+                    <IconButton
+                        className={classes.selector}
+                        aria-label={file.name}
+                        aria-pressed={isSelected}
+                        onClick={file.type === "up" ? props.handleClick : props.onIconClick}
+                        onDoubleClick={(event) => event.stopPropagation()}
                     >
-                        <div
-                            onClick={
-                                this.props.file.type !== "up"
-                                    ? this.props.onIconClick
-                                    : null
+                        {isSelected ? <CheckCircleRoundedIcon className={classes.checked} /> : icon}
+                    </IconButton>
+                    <ButtonBase
+                        className={classes.nameButton}
+                        title={file.name}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter" && onOpen) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onOpen();
                             }
-                        >
-                            {!isSelected && icon}
-                            {isSelected && (
-                                <Grow in={isSelected}>
-                                    <CheckCircleRoundedIcon
-                                        className={classNames(
-                                            classes.checkIcon,
-                                            classes.icon
-                                        )}
-                                    />
-                                </Grow>
-                            )}
-                        </div>
-                        <FileName name={this.props.file.name} />
-                    </Typography>
-                </TableCell>
-                <TableCell
-                    className={classNames(classes.hideAuto, classes.tableRow)}
-                >
-                    <Typography
-                        variant="body2"
-                        className={classNames(classes.folderName, {
-                            [classes.folderNameSelected]: isSelected,
-                            [classes.folderNameNotSelected]: !isSelected,
-                        })}
+                        }}
                     >
-                        {" "}
-                        {this.props.file.type !== "dir" &&
-                            this.props.file.type !== "up" &&
-                            sizeToString(this.props.file.size)}
-                    </Typography>
-                </TableCell>
-                <TableCell
-                    className={classNames(classes.hideAuto, classes.tableRow)}
-                >
-                    <Typography
-                        variant="body2"
-                        className={classNames(classes.folderName, {
-                            [classes.folderNameSelected]: isSelected,
-                            [classes.folderNameNotSelected]: !isSelected,
-                        })}
-                    >
-                        {" "}
-                        {formatLocalTime(this.props.file.date)}
-                    </Typography>
-                </TableCell>
-            </TableRow>
-        );
-    }
+                        <Typography component="span" variant="body2" className={classes.text}>
+                            <FileName name={file.name} />
+                        </Typography>
+                    </ButtonBase>
+                </div>
+            </TableCell>
+            <TableCell className={classNames(classes.cell, classes.meta, classes.hideAuto)}>
+                {file.type === "file" ? sizeToString(file.size) : "-"}
+            </TableCell>
+            <TableCell className={classNames(classes.cell, classes.meta, classes.hideAuto)}>
+                {file.date ? formatLocalTime(file.date) : "-"}
+            </TableCell>
+            <TableCell align="right" className={classNames(classes.cell, classes.actions)}>{actions}</TableCell>
+        </TableRow>
+    );
 }
-
-TableRowCompoment.propTypes = {
-    classes: PropTypes.object.isRequired,
-    file: PropTypes.object.isRequired,
-};
-
-const TableItem = connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(withStyles(styles)(withRouter(TableRowCompoment)));
-
-export default TableItem;

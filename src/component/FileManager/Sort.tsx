@@ -19,7 +19,7 @@ const SORT_OPTIONS: {
 ]
 
 export default function Sort({ value, onChange, isSmall, inherit, className }) {
-    const { t } = useTranslation("application", { keyPrefix: "fileManager.sortMethods" });
+    const { t } = useTranslation("application", { keyPrefix: "fileManager" });
 
     const [anchorSort, setAnchorSort] = useState<Element | null>(null);
     const showSortOptions: MouseEventHandler<HTMLButtonElement> = (e) => {
@@ -36,6 +36,7 @@ export default function Sort({ value, onChange, isSmall, inherit, className }) {
         <>
             <IconButton
                 title={t("sortMethod")}
+                aria-label={t("sortMethod")}
                 className={className}
                 onClick={showSortOptions}
                 color={inherit ? "inherit" : "default"}
@@ -54,10 +55,10 @@ export default function Sort({ value, onChange, isSmall, inherit, className }) {
                     SORT_OPTIONS.map((option, index) => (
                         <MenuItem
                             key={index}
-                            selected={option.value === sortBy}
+                            selected={option.value === (value || sortBy)}
                             onClick={() => onChangeSort(option.value)}
                         >
-                            {t(option.label)}
+                            {t("sortMethods." + option.label)}
                         </MenuItem>
                     ))
                 }

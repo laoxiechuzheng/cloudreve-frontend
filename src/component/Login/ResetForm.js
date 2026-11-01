@@ -1,3 +1,4 @@
+import AuthLayout, { useAuthStyles } from "./AuthLayout";
 import React, { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -6,8 +7,6 @@ import {
     Divider,
     FormControl,
     Link,
-    makeStyles,
-    Paper,
     TextField,
     Typography,
 } from "@material-ui/core";
@@ -21,43 +20,6 @@ import InputAdornment from "@material-ui/core/InputAdornment";
 import { VpnKeyOutlined } from "@material-ui/icons";
 import { useTheme } from "@material-ui/core/styles";
 import useMediaQuery from "@material-ui/core/useMediaQuery";
-
-const useStyles = makeStyles((theme) => ({
-    layout: {
-        width: "auto",
-        marginTop: "110px",
-        marginLeft: theme.spacing(3),
-        marginRight: theme.spacing(3),
-        [theme.breakpoints.up("sm")]: {
-            width: 400,
-            marginLeft: "auto",
-            marginRight: "auto",
-        },
-        marginBottom: 110,
-    },
-    paper: {
-        marginTop: theme.spacing(8),
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: `${theme.spacing(2)}px ${theme.spacing(3)}px ${theme.spacing(
-            3
-        )}px`,
-    },
-    avatar: {
-        margin: theme.spacing(1),
-        backgroundColor: theme.palette.secondary.main,
-    },
-    submit: {
-        marginTop: theme.spacing(3),
-    },
-    link: {
-        marginTop: "20px",
-        display: "flex",
-        width: "100%",
-        justifyContent: "space-between",
-    },
-}));
 
 function useQuery() {
     return new URLSearchParams(useLocation().search);
@@ -123,11 +85,11 @@ function ResetForm() {
             });
     };
 
-    const classes = useStyles();
+    const classes = useAuthStyles();
 
     return (
-        <div className={classes.layout}>
-            <Paper className={classes.paper}>
+        <AuthLayout>
+            <div className={classes.paper}>
                 <Avatar className={classes.avatar}>
                     <KeyIcon />
                 </Avatar>
@@ -137,11 +99,12 @@ function ResetForm() {
                 <form className={classes.form} onSubmit={submit}>
                     <FormControl margin="normal" required fullWidth>
                         <TextField
+                            id="pwd"
+                            required
                             variant={"outlined"}
                             label={t("login.newPassword")}
                             inputProps={{
                                 type: "password",
-                                id: "pwd",
                                 name: "pwd",
                             }}
                             InputProps={{
@@ -152,18 +115,19 @@ function ResetForm() {
                                 ),
                             }}
                             onChange={handleInputChange("password")}
-                            autoComplete
+                            autoComplete="new-password"
                             value={input.password}
                             autoFocus
                         />
                     </FormControl>
                     <FormControl margin="normal" required fullWidth>
                         <TextField
+                            id="pwdRepeat"
+                            required
                             variant={"outlined"}
                             label={t("login.repeatNewPassword")}
                             inputProps={{
                                 type: "password",
-                                id: "pwdRepeat",
                                 name: "pwdRepeat",
                             }}
                             InputProps={{
@@ -174,7 +138,7 @@ function ResetForm() {
                                 ),
                             }}
                             onChange={handleInputChange("password_repeat")}
-                            autoComplete
+                            autoComplete="new-password"
                             value={input.password_repeat}
                             autoFocus
                         />
@@ -205,8 +169,8 @@ function ResetForm() {
                         )}
                     </div>
                 </div>
-            </Paper>
-        </div>
+            </div>
+        </AuthLayout>
     );
 }
 

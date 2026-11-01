@@ -12,10 +12,8 @@ import {
     Typography,
     withStyles,
 } from "@material-ui/core";
-import ButtonBase from "@material-ui/core/ButtonBase";
 import { withRouter } from "react-router";
 import { toggleSnackbar } from "../../redux/explorer";
-import { Link as RouterLink } from "react-router-dom";
 import { withTranslation } from "react-i18next";
 
 const mapStateToProps = (state) => {
@@ -34,40 +32,12 @@ const mapDispatchToProps = (dispatch) => {
 };
 
 const styles = (theme) => ({
-    iconFix: {
-        marginLeft: "32px",
-        marginRight: "17px",
-        color: theme.palette.text.secondary,
-        marginTop: "2px",
-    },
-    textFix: {
-        padding: " 0 0 0 16px",
-    },
-    storageContainer: {
-        display: "flex",
-        marginTop: "15px",
-        textAlign: "left",
-        marginBottom: "11px",
-    },
-    detail: {
-        width: "100%",
-        marginRight: "35px",
-    },
-    info: {
-        width: "131px",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        [theme.breakpoints.down("xs")]: {
-            width: "162px",
-        },
-        marginTop: "5px",
-    },
-    bar: {
-        marginTop: "5px",
-    },
-    stickFooter: {
-        backgroundColor: theme.palette.background.paper,
-    },
+    iconFix: { marginRight: 12, marginTop: 2, color: theme.palette.text.secondary, fontSize: 21 },
+    storageContainer: { display: "flex", padding: "18px 24px", textAlign: "left" },
+    detail: { flex: 1, minWidth: 0 },
+    info: { marginTop: 6, overflow: "hidden", textOverflow: "ellipsis" },
+    bar: { marginTop: 10, height: 5 },
+    stickFooter: { backgroundColor: theme.palette.background.paper, flexShrink: 0 },
 });
 
 // TODO 使用 hooks 重构
@@ -123,7 +93,7 @@ class StorageBarCompoment extends Component {
                 });
             })
             // eslint-disable-next-line @typescript-eslint/no-empty-function
-            .catch(() => {});
+            .catch(() => { });
     };
 
     render() {
@@ -135,51 +105,50 @@ class StorageBarCompoment extends Component {
                 className={classes.stickFooter}
             >
                 <Divider />
-                <ButtonBase>
-                    <div className={classes.storageContainer}>
-                        <StorageIcon className={classes.iconFix} />
-                        <div className={classes.detail}>
-                            <Typography variant={"subtitle2"}>
-                                {t("navbar.storage")}
-                            </Typography>
-                            <LinearProgress
-                                className={classes.bar}
-                                color="secondary"
-                                variant="determinate"
-                                value={this.state.percent}
-                            />
-                            <div className={classes.info}>
-                                <Tooltip
-                                    title={t("navbar.storageDetail", {
-                                        used:
-                                            this.state.used === null
-                                                ? " -- "
-                                                : this.state.used,
-                                        total:
-                                            this.state.total === null
-                                                ? " -- "
-                                                : this.state.total,
-                                    })}
-                                    placement="top"
+                <div className={classes.storageContainer}>
+                    <StorageIcon className={classes.iconFix} />
+                    <div className={classes.detail}>
+                        <Typography variant={"subtitle2"}>
+                            {t("navbar.storage")}
+                        </Typography>
+                        <LinearProgress
+                            className={classes.bar}
+                            color="primary"
+                            aria-label={t("navbar.storage")}
+                            variant="determinate"
+                            value={this.state.percent}
+                        />
+                        <div className={classes.info}>
+                            <Tooltip
+                                title={t("navbar.storageDetail", {
+                                    used:
+                                        this.state.used === null
+                                            ? " -- "
+                                            : this.state.used,
+                                    total:
+                                        this.state.total === null
+                                            ? " -- "
+                                            : this.state.total,
+                                })}
+                                placement="top"
+                            >
+                                <Typography
+                                    variant="caption"
+                                    noWrap
+                                    color="textSecondary"
                                 >
-                                    <Typography
-                                        variant="caption"
-                                        noWrap
-                                        color="textSecondary"
-                                    >
-                                        {this.state.used === null
-                                            ? " -- "
-                                            : this.state.used}
-                                        {" / "}
-                                        {this.state.total === null
-                                            ? " -- "
-                                            : this.state.total}
-                                    </Typography>
-                                </Tooltip>
-                            </div>
+                                    {this.state.used === null
+                                        ? " -- "
+                                        : this.state.used}
+                                    {" / "}
+                                    {this.state.total === null
+                                        ? " -- "
+                                        : this.state.total}
+                                </Typography>
+                            </Tooltip>
                         </div>
                     </div>
-                </ButtonBase>
+                </div>
             </div>
         );
     }

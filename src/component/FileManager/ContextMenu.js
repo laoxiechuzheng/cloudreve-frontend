@@ -611,7 +611,7 @@ class ContextMenuCompoment extends Component {
                                 </MenuItem>
                             )}
 
-                            {!this.props.isMultiple && isHomePage && (
+                            {!this.props.isMultiple && isHomePage && user.group.allowShare && (
                                 <MenuItem
                                     dense
                                     onClick={() => this.props.openShareDialog()}

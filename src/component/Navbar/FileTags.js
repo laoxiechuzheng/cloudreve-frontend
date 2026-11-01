@@ -4,6 +4,7 @@ import {
     List,
     ListItemIcon,
     ListItemText,
+    Tooltip,
     makeStyles,
     withStyles,
 } from "@material-ui/core";
@@ -21,7 +22,7 @@ import MuiExpansionPanel from "@material-ui/core/ExpansionPanel";
 import MuiExpansionPanelSummary from "@material-ui/core/ExpansionPanelSummary";
 import MuiExpansionPanelDetails from "@material-ui/core/ExpansionPanelDetails";
 import MuiListItem from "@material-ui/core/ListItem";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Auth from "../../middleware/Auth";
 import {
     Circle,
@@ -49,7 +50,7 @@ import { useTranslation } from "react-i18next";
 
 const ListItem = withStyles((theme) => ({
     root: {
-        borderRadius:theme.shape.borderRadius,
+        borderRadius: theme.shape.borderRadius,
     },
 }))(MuiListItem);
 
@@ -57,6 +58,8 @@ const ExpansionPanel = withStyles({
     root: {
         maxWidth: "100%",
         boxShadow: "none",
+        border: 0,
+        backgroundColor: "transparent",
         "&:not(:last-child)": {
             borderBottom: 0,
         },
@@ -68,7 +71,7 @@ const ExpansionPanel = withStyles({
     expanded: {},
 })(MuiExpansionPanel);
 
-const ExpansionPanelSummary = withStyles((theme) =>({
+const ExpansionPanelSummary = withStyles((theme) => ({
     root: {
         minHeight: 0,
         padding: 0,
@@ -104,25 +107,32 @@ const useStyles = makeStyles((theme) => ({
         transform: "rotate(90deg)",
     },
     iconFix: {
-        marginLeft: "16px",
+        marginLeft: 0,
+        fontSize: 21,
     },
     hiddenButton: {
         display: "none",
     },
     subMenu: {
-        marginLeft: theme.spacing(2),
+        marginLeft: 12,
+        minWidth: 32,
+    },
+    deleteTag: {
+        "@media (hover: hover)": { opacity: 0 },
+        "li:hover &, li:focus-within &": { opacity: 1 },
     },
     overFlow: {
         whiteSpace: "nowrap",
         overflow: "hidden",
         textOverflow: "ellipsis",
     },
-    paddingList:{
-        padding:theme.spacing(1),
+    paddingList: {
+        padding: theme.spacing(0.5, 1.5),
+        "& .MuiListItem-root": { minHeight: 40, marginBottom: 3 },
     },
-    paddingSummary:{
-        paddingLeft:theme.spacing(1),
-        paddingRight:theme.spacing(1),
+    paddingSummary: {
+        paddingLeft: theme.spacing(1.5),
+        paddingRight: theme.spacing(1.5),
     }
 }));
 
@@ -157,7 +167,8 @@ export default function FileTag() {
 
     const [tagOpen, setTagOpen] = useState(true);
     const [addTagModal, setAddTagModal] = useState(false);
-    const [tagHover, setTagHover] = useState(null);
+    const search = useSelector((state) => state.explorer.search);
+    const currentPath = useSelector((state) => state.navigator.path);
     const [tags, setTags] = useState(
         Auth.GetUser().tags ? Auth.GetUser().tags : []
     );
@@ -183,8 +194,8 @@ export default function FileTag() {
                     style={
                         color
                             ? {
-                                  color: color,
-                              }
+                                color: color,
+                            }
                             : {}
                     }
                 />
@@ -239,6 +250,8 @@ export default function FileTag() {
                         <ListItem
                             button
                             key="我的文件"
+                            selected={isHomePage && !search}
+                            aria-current={isHomePage && !search ? "page" : undefined}
                             onClick={() =>
                                 !isHomePage && history.push("/home?path=%2F")
                             }
@@ -248,7 +261,7 @@ export default function FileTag() {
                                     className={classNames(
                                         {
                                             [classes.expanded]:
-                                            tagOpen && isHomePage,
+                                                tagOpen && isHomePage,
                                             [classes.iconFix]: true,
                                         },
                                         classes.expand
@@ -266,7 +279,7 @@ export default function FileTag() {
                 </ExpansionPanelSummary>
 
                 <ExpansionPanelDetails>
-                    <List className={classes.paddingList} onMouseLeave={() => setTagHover(null)}>
+                    <List className={classes.paddingList}>
                         <ListItem
                             button
                             id="pickfiles"
@@ -340,6 +353,7 @@ export default function FileTag() {
                             <ListItem
                                 button
                                 key={v.key}
+                                selected={isHomePage && !!search && search.keywords === v.id + "/internal"}
                                 onClick={() =>
                                     SearchMyFile(v.id + "/internal", "")
                                 }
@@ -354,7 +368,7 @@ export default function FileTag() {
                             <ListItem
                                 button
                                 key={v.id}
-                                onMouseEnter={() => setTagHover(v.id)}
+                                selected={isHomePage && (v.type === 0 ? !!search && search.keywords === "tag/" + v.id : !search && currentPath === v.expression)}
                                 onClick={() => {
                                     if (v.type === 0) {
                                         SearchMyFile("tag/" + v.id, "");
@@ -376,19 +390,11 @@ export default function FileTag() {
                                     primary={v.name}
                                 />
 
-                                {tagHover === v.id && (
-                                    <ListItemSecondaryAction
-                                        onClick={() => submitDelete(v.id)}
-                                    >
-                                        <IconButton
-                                            size={"small"}
-                                            edge="end"
-                                            aria-label="delete"
-                                        >
-                                            <Clear />
-                                        </IconButton>
-                                    </ListItemSecondaryAction>
-                                )}
+                                <ListItemSecondaryAction className={classes.deleteTag}>
+                                    <Tooltip title={t("fileManager.delete")}>
+                                        <IconButton size="small" edge="end" aria-label={t("fileManager.delete") + " " + v.name} onClick={(event) => { event.stopPropagation(); submitDelete(v.id); }}><Clear fontSize="small" /></IconButton>
+                                    </Tooltip>
+                                </ListItemSecondaryAction>
                             </ListItem>
                         ))}
 

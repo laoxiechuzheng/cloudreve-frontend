@@ -19,6 +19,8 @@ import {
 } from "../../redux/explorer";
 import PaginationFooter from "./Pagination";
 import withStyles from "@material-ui/core/styles/withStyles";
+import { DirectoryViewProvider } from "./DirectoryView";
+import DirectoryToolbar from "./DirectoryToolbar";
 
 const styles = (theme) => ({
     root: {
@@ -39,6 +41,10 @@ const styles = (theme) => ({
         display: "flex",
         flexDirection: "column",
         overflowY: "auto",
+        overflowX: "hidden",
+        minHeight: 0,
+        flex: 1,
+        backgroundColor: theme.palette.background.default,
     },
 });
 
@@ -90,17 +96,19 @@ class FileManager extends Component {
                 })}
             >
                 <DndProvider backend={HTML5Backend}>
-                    <Modals share={this.props.share} />
-                    <Navigator
-                        isShare={this.props.isShare}
-                        share={this.props.share}
-                    />
-                    <div className={classes.explorer} id={"explorer-container"}>
-                        <Explorer share={this.props.share} />
+                    <DirectoryViewProvider>
+                        <Modals share={this.props.share} />
+                        <Navigator
+                            isShare={this.props.isShare}
+                            share={this.props.share}
+                        />
+                        <DirectoryToolbar share={this.props.share} />
+                        <div className={classes.explorer} id={"explorer-container"}>
+                            <Explorer share={this.props.share} />
+                        </div>
                         <PaginationFooter />
-                    </div>
-
-                    <DragLayer />
+                        <DragLayer />
+                    </DirectoryViewProvider>
                 </DndProvider>
                 <SideDrawer />
             </div>

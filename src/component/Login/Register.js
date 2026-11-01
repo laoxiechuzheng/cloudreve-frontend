@@ -1,3 +1,4 @@
+import AuthLayout, { useAuthStyles } from "./AuthLayout";
 import React, { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import RegIcon from "@material-ui/icons/AssignmentIndOutlined";
@@ -6,11 +7,7 @@ import {
     Button,
     Divider,
     FormControl,
-    Input,
-    InputLabel,
     Link,
-    makeStyles,
-    Paper,
     TextField,
     Typography,
 } from "@material-ui/core";
@@ -24,58 +21,6 @@ import InputAdornment from "@material-ui/core/InputAdornment";
 import { EmailOutlined, VpnKeyOutlined } from "@material-ui/icons";
 import { useTheme } from "@material-ui/core/styles";
 import useMediaQuery from "@material-ui/core/useMediaQuery";
-
-const useStyles = makeStyles((theme) => ({
-    layout: {
-        width: "auto",
-        marginTop: "110px",
-        marginLeft: theme.spacing(3),
-        marginRight: theme.spacing(3),
-        [theme.breakpoints.up("sm")]: {
-            width: 400,
-            marginLeft: "auto",
-            marginRight: "auto",
-        },
-        marginBottom: 110,
-    },
-    paper: {
-        marginTop: theme.spacing(8),
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: `${theme.spacing(2)}px ${theme.spacing(3)}px ${theme.spacing(
-            3
-        )}px`,
-    },
-    avatar: {
-        margin: theme.spacing(1),
-        backgroundColor: theme.palette.secondary.main,
-    },
-    form: {
-        width: "100%", // Fix IE 11 issue.
-        marginTop: theme.spacing(1),
-    },
-    submit: {
-        marginTop: theme.spacing(3),
-    },
-    link: {
-        marginTop: "20px",
-        display: "flex",
-        width: "100%",
-        justifyContent: "space-between",
-    },
-    buttonContainer: {
-        display: "flex",
-    },
-    authnLink: {
-        textAlign: "center",
-        marginTop: 16,
-    },
-    avatarSuccess: {
-        margin: theme.spacing(1),
-        backgroundColor: theme.palette.primary.main,
-    },
-}));
 
 function Register() {
     const { t } = useTranslation();
@@ -116,7 +61,7 @@ function Register() {
         captchaRefreshRef,
         captchaParamsRef,
     } = useCaptcha();
-    const classes = useStyles();
+    const classes = useAuthStyles();
 
     const register = (e) => {
         e.preventDefault();
@@ -163,10 +108,10 @@ function Register() {
     };
 
     return (
-        <div className={classes.layout}>
+        <AuthLayout>
             <>
                 {!emailActive && (
-                    <Paper className={classes.paper}>
+                    <div className={classes.paper}>
                         <Avatar className={classes.avatar}>
                             <RegIcon />
                         </Avatar>
@@ -177,12 +122,13 @@ function Register() {
                         <form className={classes.form} onSubmit={register}>
                             <FormControl margin="normal" required fullWidth>
                                 <TextField
+                                    id="email"
+                                    required
                                     variant={"outlined"}
                                     label={t("login.email")}
                                     inputProps={{
                                         name: "email",
                                         type: "email",
-                                        id: "email",
                                     }}
                                     InputProps={{
                                         startAdornment: !isMobile && (
@@ -192,19 +138,20 @@ function Register() {
                                         ),
                                     }}
                                     onChange={handleInputChange("email")}
-                                    autoComplete
+                                    autoComplete="username"
                                     value={input.email}
                                     autoFocus
                                 />
                             </FormControl>
                             <FormControl margin="normal" required fullWidth>
                                 <TextField
+                                    id="password"
+                                    required
                                     variant={"outlined"}
                                     label={t("login.password")}
                                     inputProps={{
                                         name: "password",
                                         type: "password",
-                                        id: "password",
                                     }}
                                     InputProps={{
                                         startAdornment: !isMobile && (
@@ -215,17 +162,18 @@ function Register() {
                                     }}
                                     onChange={handleInputChange("password")}
                                     value={input.password}
-                                    autoComplete
+                                    autoComplete="new-password"
                                 />
                             </FormControl>
                             <FormControl margin="normal" required fullWidth>
                                 <TextField
+                                    id="pwdRepeat"
+                                    required
                                     label={t("login.repeatPassword")}
                                     variant={"outlined"}
                                     inputProps={{
                                         name: "pwdRepeat",
                                         type: "password",
-                                        id: "pwdRepeat",
                                     }}
                                     onChange={handleInputChange(
                                         "password_repeat"
@@ -238,7 +186,7 @@ function Register() {
                                         ),
                                     }}
                                     value={input.password_repeat}
-                                    autoComplete
+                                    autoComplete="new-password"
                                 />
                             </FormControl>
                             {regCaptcha && <CaptchaRender />}
@@ -271,10 +219,10 @@ function Register() {
                                 </Link>
                             </div>
                         </div>
-                    </Paper>
+                    </div>
                 )}
                 {emailActive && (
-                    <Paper className={classes.paper}>
+                    <div className={classes.paper}>
                         <Avatar className={classes.avatarSuccess}>
                             <EmailIcon />
                         </Avatar>
@@ -284,10 +232,10 @@ function Register() {
                         <Typography style={{ marginTop: "10px" }}>
                             {t("login.activateDescription")}
                         </Typography>
-                    </Paper>
+                    </div>
                 )}
             </>
-        </div>
+        </AuthLayout>
     );
 }
 

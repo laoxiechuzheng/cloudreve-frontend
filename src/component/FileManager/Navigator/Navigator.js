@@ -103,30 +103,39 @@ const styles = (theme) => ({
             display: "none",
         },
         backgroundColor: theme.palette.background.paper,
+        flexShrink: 0,
     },
     navigatorContainer: {
         display: "flex",
         justifyContent: "space-between",
+        alignItems: "center",
+        minWidth: 0,
+        gap: 8,
     },
     nav: {
-        height: "48px",
-        padding: "5px 15px",
+        height: 52,
+        padding: "6px 16px",
         display: "flex",
+        alignItems: "center",
+        minWidth: 0,
+        overflow: "hidden",
+        flex: 1,
     },
     optionContainer: {
-        paddingTop: "6px",
-        marginRight: "10px",
+        marginRight: 12,
+        display: "flex",
+        flexShrink: 0,
     },
     rightIcon: {
         marginTop: "6px",
         verticalAlign: "top",
-        color: "#868686",
+        color: theme.palette.text.disabled,
     },
     expandMore: {
         color: "#8d8d8d",
     },
     roundBorder: {
-        borderRadius: "4px 4px 0 0",
+        borderRadius: "8px 8px 0 0",
     },
 });
 
@@ -346,13 +355,13 @@ class NavigatorComponent extends Component {
                 {!this.props.search && isHomePage && (
                     <div>
                         <Divider />
-                        <MenuItem onClick={() => this.performAction("share")}>
+                        {user && user.group.allowShare && <MenuItem onClick={() => this.performAction("share")}>
                             <ListItemIcon>
                                 <ShareIcon />
                             </ListItemIcon>
                             {t("fileManager.share")}
-                        </MenuItem>
-                        {user.group.compress && (
+                        </MenuItem>}
+                        {user && user.group.compress && (
                             <MenuItem
                                 onClick={() => this.performAction("compress")}
                             >

@@ -1,3 +1,4 @@
+import AuthLayout, { useAuthStyles } from "./AuthLayout";
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import LockOutlinedIcon from "@material-ui/icons/LockOutlined";
@@ -7,8 +8,6 @@ import {
     Divider,
     FormControl,
     Link,
-    makeStyles,
-    Paper,
     TextField,
     Typography,
 } from "@material-ui/core";
@@ -34,54 +33,6 @@ import { useTranslation } from "react-i18next";
 import InputAdornment from "@material-ui/core/InputAdornment";
 import useMediaQuery from "@material-ui/core/useMediaQuery";
 import { useTheme } from "@material-ui/core/styles";
-
-const useStyles = makeStyles((theme) => ({
-    layout: {
-        width: "auto",
-        marginTop: "110px",
-        marginLeft: theme.spacing(3),
-        marginRight: theme.spacing(3),
-        [theme.breakpoints.up("sm")]: {
-            width: 400,
-            marginLeft: "auto",
-            marginRight: "auto",
-        },
-        marginBottom: 110,
-    },
-    paper: {
-        marginTop: theme.spacing(8),
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: `${theme.spacing(2)}px ${theme.spacing(3)}px ${theme.spacing(
-            3
-        )}px`,
-    },
-    avatar: {
-        margin: theme.spacing(1),
-        backgroundColor: theme.palette.secondary.main,
-    },
-    form: {
-        width: "100%", // Fix IE 11 issue.
-        marginTop: theme.spacing(1),
-    },
-    submit: {
-        marginTop: theme.spacing(3),
-    },
-    link: {
-        marginTop: "20px",
-        display: "flex",
-        width: "100%",
-        justifyContent: "space-between",
-    },
-    buttonContainer: {
-        display: "flex",
-    },
-    authnLink: {
-        textAlign: "center",
-        marginTop: 16,
-    },
-}));
 
 function useQuery() {
     return new URLSearchParams(useLocation().search);
@@ -133,10 +84,10 @@ function LoginForm() {
     } = useCaptcha();
     const query = useQuery();
 
-    const classes = useStyles();
+    const classes = useAuthStyles();
 
     useEffect(() => {
-        setEmail(query.get("username"));
+        setEmail(query.get("username") || "");
     }, [location]);
 
     const afterLogin = (data) => {
@@ -184,7 +135,7 @@ function LoginForm() {
                     credentialRequestOptions.publicKey.challenge
                 );
                 credentialRequestOptions.publicKey.allowCredentials.forEach(
-                    function (listItem) {
+                    function(listItem) {
                         listItem.id = bufferDecode(listItem.id);
                     }
                 );
@@ -271,10 +222,10 @@ function LoginForm() {
     };
 
     return (
-        <div className={classes.layout}>
+        <AuthLayout>
             {!twoFA && (
                 <>
-                    <Paper className={classes.paper}>
+                    <div className={classes.paper}>
                         <Avatar className={classes.avatar}>
                             <LockOutlinedIcon />
                         </Avatar>
@@ -285,10 +236,11 @@ function LoginForm() {
                             <form className={classes.form} onSubmit={login}>
                                 <FormControl margin="normal" required fullWidth>
                                     <TextField
+                                        id="email"
+                                        required
                                         label={t("login.email")}
                                         variant={"outlined"}
                                         inputProps={{
-                                            id: "email",
                                             type: "email",
                                             name: "email",
                                         }}
@@ -302,19 +254,20 @@ function LoginForm() {
                                                 </InputAdornment>
                                             ),
                                         }}
-                                        autoComplete
+                                        autoComplete="username"
                                         value={email}
                                         autoFocus
                                     />
                                 </FormControl>
                                 <FormControl margin="normal" required fullWidth>
                                     <TextField
+                                        id="password"
+                                        required
                                         variant={"outlined"}
                                         label={t("login.password")}
                                         inputProps={{
                                             name: "password",
                                             type: "password",
-                                            id: "password",
                                         }}
                                         onChange={(e) => setPwd(e.target.value)}
                                         InputProps={{
@@ -325,7 +278,7 @@ function LoginForm() {
                                             ),
                                         }}
                                         value={pwd}
-                                        autoComplete
+                                        autoComplete="current-password"
                                     />
                                 </FormControl>
                                 {loginCaptcha && <CaptchaRender />}
@@ -346,13 +299,13 @@ function LoginForm() {
                             </form>
                         )}
                         {useAuthn && (
-                            <form className={classes.form}>
+                            <form className={classes.form} onSubmit={authnLogin}>
                                 <FormControl margin="normal" required fullWidth>
                                     <TextField
+                                        id="email"
                                         variant={"outlined"}
                                         label={t("login.email")}
                                         InputProps={{
-                                            id: "email",
                                             type: "email",
                                             name: "email",
                                             startAdornment: !isMobile && (
@@ -364,7 +317,7 @@ function LoginForm() {
                                         onChange={(e) =>
                                             setEmail(e.target.value)
                                         }
-                                        autoComplete
+                                        autoComplete="username"
                                         value={email}
                                         autoFocus
                                         required
@@ -376,7 +329,6 @@ function LoginForm() {
                                     variant="contained"
                                     color="primary"
                                     disabled={loading}
-                                    onClick={authnLogin}
                                     className={classes.submit}
                                 >
                                     {t("login.continue")}
@@ -398,7 +350,7 @@ function LoginForm() {
                                 )}
                             </div>
                         </div>
-                    </Paper>
+                    </div>
 
                     {authn && (
                         <div className={classes.authnLink}>
@@ -432,7 +384,7 @@ function LoginForm() {
                 </>
             )}
             {twoFA && (
-                <Paper className={classes.paper}>
+                <div className={classes.paper}>
                     <Avatar className={classes.avatar}>
                         <VpnIcon />
                     </Avatar>
@@ -442,17 +394,18 @@ function LoginForm() {
                     <form className={classes.form} onSubmit={twoFALogin}>
                         <FormControl margin="normal" required fullWidth>
                             <TextField
+                                id="code"
+                                required
                                 label={t("login.input2FACode")}
                                 variant={"outlined"}
                                 inputProps={{
-                                    id: "code",
                                     type: "number",
                                     name: "code",
                                 }}
                                 onChange={(event) =>
                                     setFACode(event.target.value)
                                 }
-                                autoComplete
+                                autoComplete="one-time-code"
                                 value={faCode}
                                 autoFocus
                             />
@@ -469,9 +422,9 @@ function LoginForm() {
                         </Button>{" "}
                     </form>{" "}
                     <Divider />
-                </Paper>
+                </div>
             )}
-        </div>
+        </AuthLayout>
     );
 }
 

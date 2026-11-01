@@ -1,29 +1,20 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useSelector } from "react-redux";
+import { filterDirectory, paginateDirectory } from "../utils/fileFilter";
 
-const paginate = (array, page_size, page_number) =>
-    page_size === -1
-        ? array
-        : array.slice((page_number - 1) * page_size, page_number * page_size);
-
-export function usePagination() {
+export function usePagination(query = "", pageOverride) {
     const files = useSelector((state) => state.explorer.fileList);
     const folders = useSelector((state) => state.explorer.dirList);
     const pagination = useSelector((state) => state.viewUpdate.pagination);
-
-    const { dirList, fileList, startIndex } = useMemo(() => {
-        const all = paginate(
-            [...folders, ...files],
-            pagination.size,
-            pagination.page
-        );
-        const dirList = [];
-        const fileList = [];
-        all.forEach((v) =>
-            v.type === "dir" ? dirList.push(v) : fileList.push(v)
-        );
-        const startIndex = pagination.size * (pagination.page - 1);
-        return { dirList, fileList, startIndex };
-    }, [folders, files, pagination]);
-    return { dirList, fileList, startIndex };
+    const all = useMemo(() => filterDirectory(folders, files, query), [folders, files, query]);
+    return useMemo(() => {
+        const page = paginateDirectory(all, pagination.size, pageOverride === undefined ? pagination.page : pageOverride);
+        return {
+            ...page,
+            all,
+            loadedTotal: folders.length + files.length,
+            dirList: page.items.filter((file) => file.type === "dir"),
+            fileList: page.items.filter((file) => file.type === "file"),
+        };
+    }, [all, folders.length, files.length, pagination.size, pagination.page, pageOverride]);
 }

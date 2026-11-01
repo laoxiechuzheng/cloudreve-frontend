@@ -2,49 +2,22 @@ import React, { useEffect, useRef } from "react";
 import { useDrop } from "react-dnd";
 import { PaginationItem } from "@material-ui/lab";
 
-export default function CustomPaginationItem(props) {
-    const inputRef = useRef(null);
-
+export default function CustomPaginationItem({ count, isMobile, ...props }) {
+    const triggered = useRef(false);
     const [{ canDrop, isOver }, drop] = useDrop({
         accept: "object",
-        collect: (monitor) => ({
-            isOver: monitor.isOver(),
-            canDrop: monitor.canDrop(),
-        }),
+        collect: (monitor) => ({ isOver: monitor.isOver(), canDrop: monitor.canDrop() }),
     });
-
-    const isActive = canDrop && isOver;
-
+    const active = canDrop && isOver;
     useEffect(() => {
-        if (
-            isActive &&
-            props.onClick &&
-            props.type !== "start-ellipsis" &&
-            props.type !== "end-ellipsis"
-        ) {
-            console.log("ss");
+        if (!active) triggered.current = false;
+        if (active && !triggered.current && !props.selected && !props.disabled && props.onClick && !props.type.endsWith("ellipsis")) {
+            triggered.current = true;
             props.onClick();
         }
-    }, [isActive, inputRef]);
-
-    if (
-        props.isMobile &&
-        (props.type === "start-ellipsis" ||
-            props.type === "end-ellipsis" ||
-            props.type === "page")
-    ) {
-        if (props.selected) {
-            return (
-                <div>
-                    {props.page} / {props.count}
-                </div>
-            );
-        }
-        return <></>;
+    }, [active, props]);
+    if (isMobile && (props.type === "page" || props.type.endsWith("ellipsis"))) {
+        return props.selected ? <span aria-current="page" style={{ padding: "0 8px", fontSize: 12 }}>{props.page} / {count}</span> : null;
     }
-    return (
-        <div ref={inputRef}>
-            <PaginationItem ref={drop} {...props} />
-        </div>
-    );
+    return <PaginationItem ref={drop} {...props} />;
 }

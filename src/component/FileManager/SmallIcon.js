@@ -1,183 +1,64 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import { connect } from "react-redux";
+import React from "react";
+import { useSelector } from "react-redux";
+import { ButtonBase, IconButton, Typography, fade, makeStyles } from "@material-ui/core";
+import CheckCircleRounded from "@material-ui/icons/CheckCircleRounded";
+import Folder from "@material-ui/icons/Folder";
 import classNames from "classnames";
-import {
-    ButtonBase,
-    fade,
-    Tooltip,
-    Typography,
-    withStyles,
-} from "@material-ui/core";
+import { sizeToString } from "../../utils";
 import TypeIcon from "./TypeIcon";
-import CheckCircleRoundedIcon from "@material-ui/icons/CheckCircleRounded";
-import Grow from "@material-ui/core/Grow";
-import { Folder } from "@material-ui/icons";
 import FileName from "./FileName";
 
-const styles = (theme) => ({
-    container: {
-        padding: "7px",
+const useStyles = makeStyles((theme) => ({
+    root: {
+        display: "flex", alignItems: "center", minWidth: 0, minHeight: 64,
+        border: "1px solid " + theme.palette.divider, borderRadius: 8,
+        backgroundColor: theme.palette.background.paper, padding: "4px 8px",
+        "&:hover": { borderColor: theme.palette.text.disabled, backgroundColor: theme.palette.action.hover },
     },
-
-    selected: {
-        "&:hover": {
-            border: "1px solid #d0d0d0",
-        },
-        backgroundColor: fade(
-            theme.palette.primary.main,
-            theme.palette.type === "dark" ? 0.3 : 0.18
-        ),
+    selected: { "&, &:hover": { backgroundColor: fade(theme.palette.primary.main, 0.1), borderColor: theme.palette.primary.main } },
+    active: { outline: "2px solid " + theme.palette.primary.main, outlineOffset: -2 },
+    selector: { padding: 8, color: theme.palette.text.secondary, flexShrink: 0 },
+    checked: { color: theme.palette.primary.main },
+    name: {
+        display: "block", minWidth: 0, flex: 1, textAlign: "left", padding: "6px 4px", borderRadius: 4,
+        "&:focus-visible": { outline: "2px solid " + theme.palette.primary.main },
     },
-    notSelected: {
-        "&:hover": {
-            backgroundColor: theme.palette.background.default,
-            border: "1px solid #d0d0d0",
-        },
-        backgroundColor: theme.palette.background.paper,
-    },
+    title: { display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 500 },
+    meta: { color: theme.palette.text.secondary, display: "block", marginTop: 2 },
+}));
 
-    button: {
-        height: "50px",
-        border: "1px solid " + theme.palette.divider,
-        width: "100%",
-        borderRadius: theme.shape.borderRadius,
-        boxSizing: "border-box",
-        transition:
-            "background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,border 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms",
-        display: "flex",
-        justifyContent: "left",
-        alignItems: "initial",
-    },
-    icon: {
-        margin: "10px 10px 10px 16px",
-        height: "30px",
-        minWidth: "30px",
-        backgroundColor: theme.palette.background.paper,
-        borderRadius: "90%",
-        paddingTop: "3px",
-        color: theme.palette.text.secondary,
-    },
-    folderNameSelected: {
-        color:
-            theme.palette.type === "dark" ? "#fff" : theme.palette.primary.dark,
-        fontWeight: "500",
-    },
-    folderNameNotSelected: {
-        color: theme.palette.text.secondary,
-    },
-    folderName: {
-        marginTop: "15px",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        marginRight: "20px",
-    },
-    checkIcon: {
-        color: theme.palette.primary.main,
-    },
-});
-
-const mapStateToProps = (state) => {
-    return {
-        selected: state.explorer.selected,
-    };
-};
-
-const mapDispatchToProps = () => {
-    return {};
-};
-
-class SmallIconCompoment extends Component {
-    state = {};
-
-    shouldComponentUpdate(nextProps, nextState, nextContext) {
-        const isSelectedCurrent =
-            this.props.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        const isSelectedNext =
-            nextProps.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        if (
-            nextProps.selected !== this.props.selected &&
-            isSelectedCurrent === isSelectedNext
-        ) {
-            return false;
-        }
-
-        return true;
-    }
-
-    render() {
-        const { classes } = this.props;
-        const isSelected =
-            this.props.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-
-        return (
-            <ButtonBase
-                focusRipple
-                className={classNames(
-                    {
-                        [classes.selected]: isSelected,
-                        [classes.notSelected]: !isSelected,
-                    },
-                    classes.button
-                )}
+export default function SmallIcon({ file, isFolder, isActive, onIconClick, onOpen, actions }) {
+    const classes = useStyles();
+    const selected = useSelector((state) => state.explorer.selected);
+    const isSelected = selected.includes(file);
+    return (
+        <div className={classNames(classes.root, { [classes.selected]: isSelected, [classes.active]: isActive })}>
+            <IconButton
+                className={classes.selector}
+                aria-label={file.name}
+                aria-pressed={isSelected}
+                onClick={onIconClick}
+                onDoubleClick={(event) => event.stopPropagation()}
+                tabIndex={onIconClick ? 0 : -1}
             >
-                <div
-                    onClick={this.props.onIconClick}
-                    className={classNames(classes.icon, {
-                        [classes.iconSelected]: isSelected,
-                        [classes.iconNotSelected]: !isSelected,
-                    })}
-                >
-                    {!isSelected && (
-                        <>
-                            {this.props.isFolder && <Folder />}
-                            {!this.props.isFolder && (
-                                <TypeIcon fileName={this.props.file.name} />
-                            )}
-                        </>
-                    )}
-                    {isSelected && (
-                        <Grow in={isSelected}>
-                            <CheckCircleRoundedIcon
-                                className={classes.checkIcon}
-                            />
-                        </Grow>
-                    )}
-                </div>
-                <Tooltip
-                    title={this.props.file.name}
-                    aria-label={this.props.file.name}
-                >
-                    <Typography
-                        className={classNames(classes.folderName, {
-                            [classes.folderNameSelected]: isSelected,
-                            [classes.folderNameNotSelected]: !isSelected,
-                        })}
-                        variant="body2"
-                    >
-                        <FileName name={this.props.file.name} />
-                    </Typography>
-                </Tooltip>
+                {isSelected ? <CheckCircleRounded className={classes.checked} /> : isFolder ? <Folder /> : <TypeIcon fileName={file.name} />}
+            </IconButton>
+            <ButtonBase
+                className={classes.name}
+                title={file.name}
+                tabIndex={onOpen ? 0 : -1}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter" && onOpen) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onOpen();
+                    }
+                }}
+            >
+                <Typography component="span" variant="body2" className={classes.title}><FileName name={file.name} /></Typography>
+                {!isFolder && <Typography component="span" variant="caption" className={classes.meta}>{sizeToString(file.size)}</Typography>}
             </ButtonBase>
-        );
-    }
+            {actions}
+        </div>
+    );
 }
-
-SmallIconCompoment.propTypes = {
-    classes: PropTypes.object.isRequired,
-    file: PropTypes.object.isRequired,
-};
-
-const SmallIcon = connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(withStyles(styles)(SmallIconCompoment));
-
-export default SmallIcon;

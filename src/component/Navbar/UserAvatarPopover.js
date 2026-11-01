@@ -49,25 +49,33 @@ const mapDispatchToProps = (dispatch) => {
         },
     };
 };
-const styles = () => ({
+const styles = (theme) => ({
     avatar: {
         width: "30px",
         height: "30px",
     },
     header: {
         display: "flex",
-        padding: "20px 20px 20px 20px",
+        padding: 20,
+        maxWidth: "calc(100vw - 32px)",
+        alignItems: "center",
     },
     largeAvatar: {
-        height: "90px",
-        width: "90px",
+        height: 48,
+        width: 48,
+        borderRadius: 8,
     },
     info: {
         marginLeft: "10px",
-        width: "139px",
+        minWidth: 0,
+        maxWidth: 210,
     },
     badge: {
-        marginTop: "10px",
+        marginTop: 8,
+        height: 24,
+        fontSize: "0.75rem",
+        backgroundColor: theme.palette.action.selected,
+        color: theme.palette.primary.main,
     },
     visitorMenu: {
         width: 200,

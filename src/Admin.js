@@ -6,8 +6,8 @@ import { useHistory } from "react-router";
 import Auth from "./middleware/Auth";
 import { Route, Switch } from "react-router-dom";
 import { ThemeProvider } from "@material-ui/styles";
-import createTheme from "@material-ui/core/styles/createMuiTheme";
 import { zhCN } from "@material-ui/core/locale";
+import { useAppTheme } from "./theme";
 
 import Index from "./component/Admin/Index";
 import SiteInformation from "./component/Admin/Setting/SiteInformation";
@@ -47,31 +47,8 @@ const useStyles = makeStyles((theme) => ({
     toolbar: theme.mixins.toolbar,
 }));
 
-const theme = createTheme(
-    {
-        palette: {
-            background: {},
-        },
-        shape:{
-            borderRadius:12,
-        },
-        overrides: {
-            MuiButton: {
-                root: {
-                    textTransform: "none",
-                },
-            },
-            MuiTab: {
-                root: {
-                    textTransform: "none",
-                },
-            },
-        },
-    },
-    zhCN
-);
-
 export default function Admin() {
+    const theme = useAppTheme(zhCN);
     const classes = useStyles();
     const history = useHistory();
     const [show, setShow] = useState(false);

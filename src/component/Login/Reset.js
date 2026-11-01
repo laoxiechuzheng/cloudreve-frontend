@@ -1,3 +1,4 @@
+import AuthLayout, { useAuthStyles } from "./AuthLayout";
 import React, { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -5,11 +6,7 @@ import {
     Button,
     Divider,
     FormControl,
-    Input,
-    InputLabel,
     Link,
-    makeStyles,
-    Paper,
     TextField,
     Typography,
 } from "@material-ui/core";
@@ -23,43 +20,6 @@ import InputAdornment from "@material-ui/core/InputAdornment";
 import { EmailOutlined } from "@material-ui/icons";
 import { useTheme } from "@material-ui/core/styles";
 import useMediaQuery from "@material-ui/core/useMediaQuery";
-
-const useStyles = makeStyles((theme) => ({
-    layout: {
-        width: "auto",
-        marginTop: "110px",
-        marginLeft: theme.spacing(3),
-        marginRight: theme.spacing(3),
-        [theme.breakpoints.up("sm")]: {
-            width: 400,
-            marginLeft: "auto",
-            marginRight: "auto",
-        },
-        marginBottom: 110,
-    },
-    paper: {
-        marginTop: theme.spacing(8),
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: `${theme.spacing(2)}px ${theme.spacing(3)}px ${theme.spacing(
-            3
-        )}px`,
-    },
-    avatar: {
-        margin: theme.spacing(1),
-        backgroundColor: theme.palette.secondary.main,
-    },
-    submit: {
-        marginTop: theme.spacing(3),
-    },
-    link: {
-        marginTop: "20px",
-        display: "flex",
-        width: "100%",
-        justifyContent: "space-between",
-    },
-}));
 
 function Reset() {
     const { t } = useTranslation();
@@ -125,11 +85,11 @@ function Reset() {
             });
     };
 
-    const classes = useStyles();
+    const classes = useAuthStyles();
 
     return (
-        <div className={classes.layout}>
-            <Paper className={classes.paper}>
+        <AuthLayout>
+            <div className={classes.paper}>
                 <Avatar className={classes.avatar}>
                     <KeyIcon />
                 </Avatar>
@@ -139,11 +99,12 @@ function Reset() {
                 <form className={classes.form} onSubmit={submit}>
                     <FormControl margin="normal" required fullWidth>
                         <TextField
+                            id="email"
+                            required
                             variant={"outlined"}
                             label={t("login.email")}
                             inputProps={{
                                 name: "email",
-                                id: "email",
                                 type: "email",
                             }}
                             InputProps={{
@@ -154,7 +115,7 @@ function Reset() {
                                 ),
                             }}
                             onChange={handleInputChange("email")}
-                            autoComplete
+                            autoComplete="username"
                             value={input.email}
                             autoFocus
                         />
@@ -188,8 +149,8 @@ function Reset() {
                         )}
                     </div>
                 </div>
-            </Paper>
-        </div>
+            </div>
+        </AuthLayout>
     );
 }
 

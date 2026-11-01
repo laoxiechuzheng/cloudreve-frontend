@@ -1,302 +1,90 @@
-import {
-    ButtonBase,
-    Divider,
-    fade,
-    Tooltip,
-    Typography,
-    withStyles,
-} from "@material-ui/core";
-import classNames from "classnames";
-import PropTypes from "prop-types";
-import React, { Component } from "react";
-import ContentLoader from "react-content-loader";
+import React, { useState } from "react";
+import { ButtonBase, IconButton, Typography, fade, makeStyles } from "@material-ui/core";
+import CheckCircleRoundedIcon from "@material-ui/icons/CheckCircleRounded";
 import { LazyLoadImage } from "react-lazy-load-image-component";
-import { connect } from "react-redux";
-import { withRouter } from "react-router";
+import { useSelector } from "react-redux";
+import { useLocation } from "react-router";
+import classNames from "classnames";
 import { baseURL } from "../../middleware/Api";
+import { sizeToString } from "../../utils";
 import pathHelper from "../../utils/page";
 import TypeIcon from "./TypeIcon";
-import CheckCircleRoundedIcon from "@material-ui/icons/CheckCircleRounded";
-import statusHelper from "../../utils/page";
-import Grow from "@material-ui/core/Grow";
 import FileName from "./FileName";
 
-const styles = (theme) => ({
-    container: {},
-
-    selected: {
-        "&:hover": {
-            border: "1px solid #d0d0d0",
-        },
-        backgroundColor: fade(
-            theme.palette.primary.main,
-            theme.palette.type === "dark" ? 0.3 : 0.18
-        ),
-    },
-
-    notSelected: {
-        "&:hover": {
-            backgroundColor: theme.palette.background.default,
-            border: "1px solid #d0d0d0",
-        },
+const useStyles = makeStyles((theme) => ({
+    root: {
+        border: "1px solid " + theme.palette.divider, borderRadius: 8, overflow: "hidden", minWidth: 0,
         backgroundColor: theme.palette.background.paper,
+        "&:hover": { borderColor: theme.palette.text.disabled },
     },
-
-    button: {
-        border: "1px solid " + theme.palette.divider,
-        width: "100%",
-        borderRadius: theme.shape.borderRadius,
-        boxSizing: "border-box",
-        transition:
-            "background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,border 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms",
-        alignItems: "initial",
-        display: "initial",
-    },
-    folderNameSelected: {
-        color:
-            theme.palette.type === "dark" ? "#fff" : theme.palette.primary.dark,
-        fontWeight: "500",
-    },
-    folderNameNotSelected: {
-        color: theme.palette.text.secondary,
-    },
-    folderName: {
-        marginTop: "15px",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        marginRight: "20px",
-    },
+    selected: { "&, &:hover": { backgroundColor: fade(theme.palette.primary.main, 0.08), borderColor: theme.palette.primary.main } },
     preview: {
-        overflow: "hidden",
-        height: "150px",
-        width: "100%",
-        borderRadius: "12px 12px 0 0",
-        backgroundColor: theme.palette.background.default,
+        width: "100%", height: 144, display: "flex", alignItems: "center", justifyContent: "center",
+        backgroundColor: theme.palette.background.default, borderBottom: "1px solid " + theme.palette.divider,
+        "&:focus-visible": { outline: "2px solid " + theme.palette.primary.main, outlineOffset: -3 },
     },
-    previewIcon: {
-        overflow: "hidden",
-        height: "149px",
-        width: "100%",
-        borderRadius: "12px 12px 0 0",
-        backgroundColor: theme.palette.background.paper,
-        paddingTop: "50px",
-    },
-    iconBig: {
-        fontSize: 50,
-    },
-    picPreview: {
-        objectFit: "cover",
-        width: "100%",
-        height: "100%",
-    },
-    fileInfo: {
-        height: "50px",
-        display: "flex",
-    },
-    icon: {
-        margin: "10px 10px 10px 16px",
-        height: "30px",
-        minWidth: "30px",
-        backgroundColor: theme.palette.background.paper,
-        borderRadius: "90%",
-        paddingTop: "3px",
-        color: theme.palette.text.secondary,
-    },
-    hide: {
-        display: "none",
-    },
-    loadingAnimation: {
-        borderRadius: "12px 12px 0 0",
-        height: "100%",
-        width: "100%",
-    },
-    shareFix: {
-        marginLeft: "20px",
-    },
-    checkIcon: {
-        color: theme.palette.primary.main,
-    },
-    noDrag: {
-        userDrag: "none",
-    },
-});
+    image: { width: "100%", height: "100%", objectFit: "contain", userSelect: "none" },
+    iconBig: { fontSize: 52 },
+    info: { display: "flex", alignItems: "center", padding: "8px 10px", minWidth: 0, gap: 6 },
+    selector: { color: theme.palette.text.secondary, padding: 8, flexShrink: 0 },
+    checked: { color: theme.palette.primary.main },
+    name: { minWidth: 0, flex: 1 },
+    title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 },
+    meta: { color: theme.palette.text.secondary, fontVariantNumeric: "tabular-nums" },
+    footer: { padding: "0 12px 10px", display: "flex", justifyContent: "flex-end", minHeight: 36 },
+}));
 
-const mapStateToProps = (state) => {
-    return {
-        path: state.navigator.path,
-        selected: state.explorer.selected,
-        shareInfo: state.viewUpdate.shareInfo,
-    };
-};
-
-const mapDispatchToProps = () => {
-    return {};
-};
-
-class FileIconCompoment extends Component {
-    static defaultProps = {
-        share: false,
-    };
-
-    state = {
-        loading: false,
-        showPicIcon: false,
-    };
-
-    shouldComponentUpdate(nextProps, nextState, nextContext) {
-        const isSelectedCurrent =
-            this.props.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        const isSelectedNext =
-            nextProps.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        if (
-            nextProps.selected !== this.props.selected &&
-            isSelectedCurrent === isSelectedNext
-        ) {
-            return false;
-        }
-
-        return true;
-    }
-
-    render() {
-        const { classes } = this.props;
-        const isSelected =
-            this.props.selected.findIndex((value) => {
-                return value === this.props.file;
-            }) !== -1;
-        const isSharePage = pathHelper.isSharePage(
-            this.props.location.pathname
-        );
-        const isMobile = statusHelper.isMobile();
-
-        return (
-            <div className={classes.container}>
-                <ButtonBase
-                    focusRipple
-                    className={classNames(
-                        {
-                            [classes.selected]: isSelected,
-                            [classes.notSelected]: !isSelected,
-                        },
-                        classes.button
-                    )}
+export default function FileIcon({ file, onIconClick, onOpen, actions }) {
+    const classes = useStyles();
+    const selected = useSelector((state) => state.explorer.selected);
+    const shareInfo = useSelector((state) => state.viewUpdate.shareInfo);
+    const location = useLocation();
+    const [failedThumbnail, setFailedThumbnail] = useState(null);
+    const isSelected = selected.includes(file);
+    const thumbnail = baseURL + (pathHelper.isSharePage(location.pathname) && shareInfo
+        ? "/share/thumb/" + shareInfo.key + "/" + file.id + "?path=" + encodeURIComponent(file.path)
+        : "/file/thumb/" + file.id);
+    return (
+        <div className={classNames(classes.root, { [classes.selected]: isSelected })}>
+            <ButtonBase
+                className={classes.preview}
+                aria-label={file.name}
+                tabIndex={onOpen ? 0 : -1}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter" && onOpen) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onOpen();
+                    }
+                }}
+            >
+                {file.thumb && failedThumbnail !== thumbnail ? (
+                    <LazyLoadImage
+                        src={thumbnail}
+                        alt={file.name}
+                        className={classes.image}
+                        draggable={false}
+                        onError={() => setFailedThumbnail(thumbnail)}
+                    />
+                ) : <TypeIcon className={classes.iconBig} fileName={file.name} />}
+            </ButtonBase>
+            <div className={classes.info}>
+                <IconButton
+                    className={classes.selector}
+                    aria-label={file.name}
+                    aria-pressed={isSelected}
+                    tabIndex={onIconClick ? 0 : -1}
+                    onClick={onIconClick}
+                    onDoubleClick={(event) => event.stopPropagation()}
                 >
-                    {this.props.file.thumb && !this.state.showPicIcon && (
-                        <div className={classes.preview}>
-                            <LazyLoadImage
-                                className={classNames(
-                                    {
-                                        [classes.hide]: this.state.loading,
-                                        [classes.picPreview]:
-                                            !this.state.loading,
-                                    },
-                                    classes.noDrag
-                                )}
-                                src={
-                                    baseURL +
-                                    (isSharePage && this.props.shareInfo
-                                        ? "/share/thumb/" +
-                                          this.props.shareInfo.key +
-                                          "/" +
-                                          this.props.file.id +
-                                          "?path=" +
-                                          encodeURIComponent(
-                                              this.props.file.path
-                                          )
-                                        : "/file/thumb/" + this.props.file.id)
-                                }
-                                afterLoad={() =>
-                                    this.setState({ loading: false })
-                                }
-                                beforeLoad={() =>
-                                    this.setState({ loading: true })
-                                }
-                                onError={() =>
-                                    this.setState({ showPicIcon: true })
-                                }
-                            />
-                            <ContentLoader
-                                height={150}
-                                width={170}
-                                className={classNames(
-                                    {
-                                        [classes.hide]: !this.state.loading,
-                                    },
-                                    classes.loadingAnimation
-                                )}
-                            >
-                                <rect x="0" y="0" width="100%" height="150" />
-                            </ContentLoader>
-                        </div>
-                    )}
-                    {(!this.props.file.thumb || this.state.showPicIcon) && (
-                        <div className={classes.previewIcon}>
-                            <TypeIcon
-                                className={classes.iconBig}
-                                fileName={this.props.file.name}
-                            />
-                        </div>
-                    )}
-                    {(!this.props.file.thumb || this.state.showPicIcon) && (
-                        <Divider />
-                    )}
-                    <div className={classes.fileInfo}>
-                        {!this.props.share && (
-                            <div
-                                onClick={this.props.onIconClick}
-                                className={classNames(classes.icon, {
-                                    [classes.iconSelected]: isSelected,
-                                    [classes.iconNotSelected]: !isSelected,
-                                })}
-                            >
-                                {!isSelected && (
-                                    <TypeIcon fileName={this.props.file.name} />
-                                )}
-                                {isSelected && (
-                                    <Grow in={isSelected}>
-                                        <CheckCircleRoundedIcon
-                                            className={classes.checkIcon}
-                                        />
-                                    </Grow>
-                                )}
-                            </div>
-                        )}
-                        <Tooltip
-                            title={this.props.file.name}
-                            aria-label={this.props.file.name}
-                        >
-                            <Typography
-                                variant="body2"
-                                className={classNames(classes.folderName, {
-                                    [classes.folderNameSelected]: isSelected,
-                                    [classes.folderNameNotSelected]:
-                                        !isSelected,
-                                    [classes.shareFix]: this.props.share,
-                                })}
-                            >
-                                <FileName name={this.props.file.name} />
-                            </Typography>
-                        </Tooltip>
-                    </div>
-                </ButtonBase>
+                    {isSelected ? <CheckCircleRoundedIcon className={classes.checked} /> : <TypeIcon fileName={file.name} />}
+                </IconButton>
+                <div className={classes.name} title={file.name}>
+                    <Typography variant="body2" className={classes.title}><FileName name={file.name} /></Typography>
+                    <Typography variant="caption" className={classes.meta}>{sizeToString(file.size)}</Typography>
+                </div>
             </div>
-        );
-    }
+            {actions && <div className={classes.footer}>{actions}</div>}
+        </div>
+    );
 }
-
-FileIconCompoment.propTypes = {
-    classes: PropTypes.object.isRequired,
-    file: PropTypes.object.isRequired,
-};
-
-const FileIcon = connect(
-    mapStateToProps,
-    mapDispatchToProps
-)(withStyles(styles)(withRouter(FileIconCompoment)));
-
-export default FileIcon;

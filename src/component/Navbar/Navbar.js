@@ -12,10 +12,11 @@ import MoveIcon from "@material-ui/icons/Input";
 import DeleteIcon from "@material-ui/icons/Delete";
 import MenuIcon from "@material-ui/icons/Menu";
 import { isPreviewable } from "../../config";
-import { changeThemeColor, sizeToString, vhCheck } from "../../utils";
+import { sizeToString, vhCheck } from "../../utils";
 import Uploader from "../Uploader/Uploader.js";
 import pathHelper from "../../utils/page";
-import SezrchBar from "./SearchBar";
+import SearchBar from "./SearchBar";
+import Brand from "./Brand";
 import StorageBar from "./StorageBar";
 import UserAvatar from "./UserAvatar";
 import UserInfo from "./UserInfo";
@@ -81,7 +82,7 @@ const drawerWidthMobile = 270;
 
 const ListItem = withStyles((theme) => ({
     root: {
-        borderRadius:theme.shape.borderRadius,
+        borderRadius: theme.shape.borderRadius,
     },
 }))(MuiListItem);
 
@@ -148,8 +149,8 @@ const mapDispatchToProps = (dispatch) => {
         openLoadingDialog: (text) => {
             dispatch(openLoadingDialog(text));
         },
-        setSessionStatus: () => {
-            dispatch(setSessionStatus());
+        setSessionStatus: (status) => {
+            dispatch(setSessionStatus(status));
         },
         openPreview: (share) => {
             dispatch(openPreview(share));
@@ -171,12 +172,20 @@ const mapDispatchToProps = (dispatch) => {
 
 const styles = (theme) => ({
     appBar: {
-        marginLeft: drawerWidth,
+        backgroundColor: theme.palette.background.paper,
+        color: theme.palette.text.primary,
+        zIndex: theme.zIndex.appBar,
+        "& .MuiToolbar-root": { paddingLeft: 16, paddingRight: 16, gap: 8 },
+        "& .MuiIconButton-root": { width: 40, height: 40, flexShrink: 0 },
         [theme.breakpoints.down("xs")]: {
-            marginLeft: drawerWidthMobile,
+            "& .MuiToolbar-root": { paddingLeft: 8, paddingRight: 8, gap: 4 },
         },
-        zIndex: theme.zIndex.drawer + 1,
-        transition: " background-color 250ms",
+    },
+    brand: { minWidth: 0, flexShrink: 1 },
+    pageTitle: {
+        marginLeft: 20, paddingLeft: 20, borderLeft: `1px solid ${theme.palette.divider}`,
+        color: theme.palette.text.secondary, maxWidth: 260,
+        [theme.breakpoints.down("md")]: { display: "none" },
     },
 
     drawer: {
@@ -191,35 +200,37 @@ const styles = (theme) => ({
         marginRight: theme.spacing(2),
     },
     menuButton: {
-        marginRight: 20,
+        marginRight: 4,
         [theme.breakpoints.up("sm")]: {
             display: "none",
         },
     },
     menuButtonDesktop: {
-        marginRight: 20,
+        marginRight: 4,
         [theme.breakpoints.down("xs")]: {
             display: "none",
         },
     },
     menuIcon: {
-        marginRight: 20,
+        marginRight: 4,
     },
     toolbar: theme.mixins.toolbar,
     drawerPaper: {
         width: drawerWidthMobile,
+        maxWidth: "calc(100vw - 48px)",
     },
     drawerPaperDesktop: {
         width: drawerWidth,
+        top: 64,
+        height: "calc(100% - 64px)",
     },
     upDrawer: {
         overflowX: "hidden",
-        [theme.breakpoints.up("sm")]: {
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            justifyContent: "space-between",
-        },
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        justifyContent: "space-between",
     },
     drawerOpen: {
         width: drawerWidth,
@@ -252,6 +263,9 @@ const styles = (theme) => ({
     },
     sectionForFile: {
         display: "flex",
+        minWidth: 0,
+        overflowX: "auto",
+        alignItems: "center",
     },
     extendedIcon: {
         marginRight: theme.spacing(1),
@@ -268,7 +282,8 @@ const styles = (theme) => ({
         right: "10px",
     },
     iconFix: {
-        marginLeft: "16px",
+        marginLeft: 0,
+        fontSize: 21,
     },
     dividerFix: {
         marginTop: "8px",
@@ -300,9 +315,12 @@ const styles = (theme) => ({
     },
     minStickDrawer: {
         overflowY: "auto",
+        flex: 1,
+        paddingTop: 16,
     },
-    paddingList:{
-        padding:theme.spacing(1),
+    paddingList: {
+        padding: theme.spacing(1, 1.5),
+        "& .MuiListItem-root": { marginBottom: 3 },
     }
 });
 class NavbarCompoment extends Component {
@@ -322,30 +340,6 @@ class NavbarCompoment extends Component {
     componentWillUnmount() {
         this.unlisten();
     }
-
-    componentDidMount() {
-        changeThemeColor(
-            this.props.selected.length <= 1 &&
-                !(!this.props.isMultiple && this.props.withFile)
-                ? this.props.theme.palette.primary.main
-                : this.props.theme.palette.background.default
-        );
-    }
-
-    UNSAFE_componentWillReceiveProps = (nextProps) => {
-        if (
-            (this.props.selected.length === 0) !==
-            (nextProps.selected.length === 0)
-        ) {
-            changeThemeColor(
-                !(this.props.selected.length === 0)
-                    ? this.props.theme.palette.type === "dark"
-                        ? this.props.theme.palette.background.default
-                        : this.props.theme.palette.primary.main
-                    : this.props.theme.palette.background.default
-            );
-        }
-    };
 
     handleDrawerToggle = () => {
         this.setState((state) => ({ mobileOpen: !state.mobileOpen }));
@@ -385,7 +379,7 @@ class NavbarCompoment extends Component {
                 );
             })
             .finally(() => {
-                this.handleClose();
+                this.setState({ mobileOpen: false });
             });
     };
 
@@ -393,13 +387,14 @@ class NavbarCompoment extends Component {
         const { classes, t } = this.props;
         const user = Auth.GetUser(this.props.isLogin);
         const isHomePage = pathHelper.isHomePage(this.props.location.pathname);
+        const isAuthPage = /^\/(login|signup|activate|forget|reset)(\/|$)/.test(this.props.location.pathname);
         const isSharePage = pathHelper.isSharePage(
             this.props.location.pathname
         );
 
         const drawer = (
-            <div id="container" className={classes.upDrawer}>
-                {pathHelper.isMobile() && <UserInfo />}
+            <nav className={classes.upDrawer} aria-label={t("navbar.myFiles")}>
+                <Hidden smUp><UserInfo /></Hidden>
 
                 {Auth.Check(this.props.isLogin) && (
                     <>
@@ -409,6 +404,7 @@ class NavbarCompoment extends Component {
                                 <ListItem
                                     button
                                     key="我的分享"
+                                    selected={this.props.location.pathname.startsWith("/shares")}
                                     onClick={() =>
                                         this.props.history.push("/shares?")
                                     }
@@ -426,6 +422,7 @@ class NavbarCompoment extends Component {
                                     <ListItem
                                         button
                                         key="离线下载"
+                                        selected={this.props.location.pathname.startsWith("/aria2")}
                                         onClick={() =>
                                             this.props.history.push("/aria2?")
                                         }
@@ -444,6 +441,7 @@ class NavbarCompoment extends Component {
                                     <ListItem
                                         button
                                         key="WebDAV"
+                                        selected={this.props.location.pathname.startsWith("/webdav")}
                                         onClick={() =>
                                             this.props.history.push("/webdav?")
                                         }
@@ -462,6 +460,7 @@ class NavbarCompoment extends Component {
                                 <ListItem
                                     button
                                     key="任务队列"
+                                    selected={this.props.location.pathname.startsWith("/tasks")}
                                     onClick={() =>
                                         this.props.history.push("/tasks?")
                                     }
@@ -475,44 +474,43 @@ class NavbarCompoment extends Component {
                                         primary={t("navbar.taskQueue")}
                                     />
                                 </ListItem>
-                                {pathHelper.isMobile() && (
-                                    <>
-                                        <Divider />
-                                        <ListItem
-                                            button
-                                            key="个人设置"
-                                            onClick={() =>
-                                                this.props.history.push(
-                                                    "/setting?"
-                                                )
-                                            }
-                                        >
-                                            <ListItemIcon>
-                                                <Settings
-                                                    className={classes.iconFix}
-                                                />
-                                            </ListItemIcon>
-                                            <ListItemText
-                                                primary={t("navbar.setting")}
+                                <>
+                                    <Divider />
+                                    <ListItem
+                                        button
+                                        key="个人设置"
+                                        selected={this.props.location.pathname.startsWith("/setting")}
+                                        onClick={() =>
+                                            this.props.history.push(
+                                                "/setting?"
+                                            )
+                                        }
+                                    >
+                                        <ListItemIcon>
+                                            <Settings
+                                                className={classes.iconFix}
                                             />
-                                        </ListItem>
+                                        </ListItemIcon>
+                                        <ListItemText
+                                            primary={t("navbar.setting")}
+                                        />
+                                    </ListItem>
 
-                                        <ListItem
-                                            button
-                                            key="退出登录"
-                                            onClick={this.signOut}
-                                        >
-                                            <ListItemIcon>
-                                                <LogoutVariant
-                                                    className={classes.iconFix}
-                                                />
-                                            </ListItemIcon>
-                                            <ListItemText
-                                                primary={t("login.logout")}
+                                    <Hidden smUp><ListItem
+                                        button
+                                        key="退出登录"
+                                        onClick={this.signOut}
+                                    >
+                                        <ListItemIcon>
+                                            <LogoutVariant
+                                                className={classes.iconFix}
                                             />
-                                        </ListItem>
-                                    </>
-                                )}
+                                        </ListItemIcon>
+                                        <ListItemText
+                                            primary={t("login.logout")}
+                                        />
+                                    </ListItem></Hidden>
+                                </>
                             </List>
                         </div>
                         <div>
@@ -526,6 +524,7 @@ class NavbarCompoment extends Component {
                         <ListItem
                             button
                             key="登录"
+                            selected={this.props.location.pathname === "/login"}
                             onClick={() => this.props.history.push("/login")}
                         >
                             <ListItemIcon>
@@ -539,6 +538,7 @@ class NavbarCompoment extends Component {
                             <ListItem
                                 button
                                 key="注册"
+                                selected={this.props.location.pathname === "/signup"}
                                 onClick={() =>
                                     this.props.history.push("/signup")
                                 }
@@ -551,7 +551,7 @@ class NavbarCompoment extends Component {
                         )}
                     </div>
                 )}
-            </div>
+            </nav>
         );
         const iOS =
             process.browser && /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -560,15 +560,10 @@ class NavbarCompoment extends Component {
                 <AppBar
                     position="fixed"
                     className={classes.appBar}
-                    color={
-                        this.props.theme.palette.type !== "dark" &&
-                        this.props.selected.length === 0
-                            ? "primary"
-                            : "default"
-                    }
+                    color="default"
                 >
                     <Toolbar>
-                        {this.props.selected.length === 0 && (
+                        {this.props.selected.length === 0 && !isAuthPage && (
                             <IconButton
                                 color="inherit"
                                 aria-label="Open drawer"
@@ -578,7 +573,7 @@ class NavbarCompoment extends Component {
                                 <MenuIcon />
                             </IconButton>
                         )}
-                        {this.props.selected.length === 0 && (
+                        {this.props.selected.length === 0 && !isAuthPage && (
                             <IconButton
                                 color="inherit"
                                 aria-label="Open drawer"
@@ -610,27 +605,16 @@ class NavbarCompoment extends Component {
                                 </Grow>
                             )}
                         {this.props.selected.length === 0 && (
-                            <Typography
-                                variant="h6"
-                                color="inherit"
-                                style={{
-                                    cursor: "pointer",
-                                }}
-                                noWrap
-                                onClick={() => {
-                                    this.props.history.push("/");
-                                }}
-                            >
-                                {this.props.subTitle
-                                    ? this.props.subTitle
-                                    : this.props.title}
-                            </Typography>
+                            <Brand className={classes.brand} />
+                        )}
+                        {this.props.selected.length === 0 && this.props.subTitle && (
+                            <Typography className={classes.pageTitle} variant="body2" noWrap>{this.props.subTitle}</Typography>
                         )}
 
                         {!this.props.isMultiple &&
                             (this.props.withFile || this.props.withFolder) &&
                             !pathHelper.isMobile() && (
-                                <Typography variant="h6" color="inherit" noWrap>
+                                <Typography variant="subtitle1" color="inherit" style={{ minWidth: 0 }} noWrap>
                                     {this.props.selected[0].name}{" "}
                                     {this.props.withFile &&
                                         (isHomePage ||
@@ -638,10 +622,10 @@ class NavbarCompoment extends Component {
                                                 this.props.location.pathname
                                             )) &&
                                         "(" +
-                                            sizeToString(
-                                                this.props.selected[0].size
-                                            ) +
-                                            ")"}
+                                        sizeToString(
+                                            this.props.selected[0].size
+                                        ) +
+                                        ")"}
                                 </Typography>
                             )}
 
@@ -653,7 +637,7 @@ class NavbarCompoment extends Component {
                                     })}
                                 </Typography>
                             )}
-                        {this.props.selected.length === 0 && <SezrchBar />}
+                        {this.props.selected.length === 0 && !isAuthPage && <SearchBar />}
                         <div className={classes.grow} />
                         {this.props.selected.length > 0 &&
                             (isHomePage || isSharePage) && (
@@ -747,29 +731,28 @@ class NavbarCompoment extends Component {
                                         )}
                                     {(this.props.isMultiple ||
                                         this.props.withFolder) && (
-                                        <Grow
-                                            in={
-                                                this.props.isMultiple ||
-                                                this.props.withFolder
-                                            }
-                                        >
-                                            <Tooltip
-                                                title={t(
-                                                    "fileManager.batchDownload"
-                                                )}
+                                            <Grow
+                                                in={
+                                                    this.props.isMultiple ||
+                                                    this.props.withFolder
+                                                }
                                             >
-                                                <IconButton
-                                                    color="inherit"
-                                                    disableClickAway
-                                                    onClick={() =>
-                                                        this.archiveDownload()
-                                                    }
+                                                <Tooltip
+                                                    title={t(
+                                                        "fileManager.batchDownload"
+                                                    )}
                                                 >
-                                                    <DownloadIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Grow>
-                                    )}
+                                                    <IconButton
+                                                        color="inherit"
+                                                        onClick={() =>
+                                                            this.archiveDownload()
+                                                        }
+                                                    >
+                                                        <DownloadIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Grow>
+                                        )}
                                     {!this.props.isMultiple &&
                                         !pathHelper.isMobile() &&
                                         !isSharePage && (
@@ -917,7 +900,7 @@ class NavbarCompoment extends Component {
                             paper: classes.drawerPaper,
                         }}
                         anchor="left"
-                        open={this.state.mobileOpen}
+                        open={!isAuthPage && this.state.mobileOpen}
                         onClose={this.handleDrawerToggle}
                         onOpen={() =>
                             this.setState(() => ({ mobileOpen: true }))
@@ -936,14 +919,13 @@ class NavbarCompoment extends Component {
                             paper: classes.drawerPaperDesktop,
                         }}
                         className={classNames(classes.drawer, {
-                            [classes.drawerOpen]: this.props.desktopOpen,
-                            [classes.drawerClose]: !this.props.desktopOpen,
+                            [classes.drawerOpen]: !isAuthPage && this.props.desktopOpen,
+                            [classes.drawerClose]: isAuthPage || !this.props.desktopOpen,
                         })}
                         variant="persistent"
                         anchor="left"
-                        open={this.props.desktopOpen}
+                        open={!isAuthPage && this.props.desktopOpen}
                     >
-                        <div className={classes.toolbar} />
                         {drawer}
                     </Drawer>
                 </Hidden>

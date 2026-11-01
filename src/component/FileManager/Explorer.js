@@ -1,117 +1,39 @@
-import {
-    CircularProgress,
-    Grid,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableRow,
-    Typography,
-} from "@material-ui/core";
-import TableSortLabel from "@material-ui/core/TableSortLabel";
-import classNames from "classnames";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
+import { Button, CircularProgress, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, Typography, makeStyles } from "@material-ui/core";
+import FolderOpenIcon from "@material-ui/icons/FolderOpen";
+import SearchIcon from "@material-ui/icons/Search";
+import ErrorOutlineIcon from "@material-ui/icons/ErrorOutline";
 import { configure, GlobalHotKeys } from "react-hotkeys";
-import explorer, {
-    changeContextMenu,
-    openRemoveDialog,
-    setSelectedTarget,
-} from "../../redux/explorer";
+import { useDispatch, useSelector } from "react-redux";
+import { useLocation } from "react-router";
+import { useTranslation } from "react-i18next";
+import classNames from "classnames";
+import { changeContextMenu, openRemoveDialog, refreshFileList } from "../../redux/explorer";
+import { changeSortMethod } from "../../redux/explorer/action";
 import { isMac } from "../../utils";
 import pathHelper from "../../utils/page";
 import ContextMenu from "./ContextMenu";
-import ImgPreivew from "./ImgPreview";
+import ImgPreview from "./ImgPreview";
 import ObjectIcon from "./ObjectIcon";
-import Nothing from "../Placeholder/Nothing";
-import { useDispatch, useSelector } from "react-redux";
-import { useLocation } from "react-router";
-import { usePagination } from "../../hooks/pagination";
-import { makeStyles } from "@material-ui/core/styles";
-import { useTranslation } from "react-i18next";
+import { useDirectoryView } from "./DirectoryView";
 
 const useStyles = makeStyles((theme) => ({
-    paper: {
-        padding: theme.spacing(2),
-        textAlign: "center",
-        color: theme.palette.text.secondary,
-        margin: "10px",
-    },
-    root: {
-        padding: "10px",
-        [theme.breakpoints.up("sm")]: {
-            height: "calc(100vh - 113px)",
-        },
-    },
-    rootTable: {
-        padding: "0px",
-        backgroundColor: theme.palette.background.paper.white,
-        [theme.breakpoints.up("sm")]: {
-            height: "calc(100vh - 113px)",
-        },
-    },
-    typeHeader: {
-        margin: "10px 25px",
-        color: "#6b6b6b",
-        fontWeight: "500",
-    },
-    loading: {
-        justifyContent: "center",
-        display: "flex",
-        marginTop: "40px",
-    },
-    errorBox: {
-        padding: theme.spacing(4),
-    },
-    errorMsg: {
-        marginTop: "10px",
-    },
-    hideAuto: {
-        [theme.breakpoints.down("sm")]: {
-            display: "none",
-        },
-    },
-    flexFix: {
-        minWidth: 0,
-    },
-    upButton: {
-        marginLeft: "20px",
-        marginTop: "10px",
-        marginBottom: "10px",
-    },
-    clickAway: {
-        height: "100%",
-        width: "100%",
-    },
-    rootShare: {
-        height: "100%",
-        minHeight: 500,
-    },
-    visuallyHidden: {
-        border: 0,
-        clip: "rect(0 0 0 0)",
-        height: 1,
-        margin: -1,
-        overflow: "hidden",
-        padding: 0,
-        position: "absolute",
-        top: 20,
-        width: 1,
-    },
-    gridContainer: {
-        [theme.breakpoints.down("sm")]: {
-            gridTemplateColumns:
-                "repeat(auto-fill,minmax(180px,1fr))!important",
-        },
-        [theme.breakpoints.up("md")]: {
-            gridTemplateColumns:
-                "repeat(auto-fill,minmax(220px,1fr))!important",
-        },
-        display: "grid!important",
-    },
-    gridItem: {
-        flex: "1 1 220px!important",
-    },
+    root: { padding: "16px 20px 24px", flex: 1, minHeight: 240, [theme.breakpoints.down("xs")]: { padding: "12px 12px 20px" } },
+    list: { padding: 0, [theme.breakpoints.down("xs")]: { padding: 0 } },
+    table: { tableLayout: "fixed", width: "100%", "& thead th": { color: theme.palette.text.secondary } },
+    head: { backgroundColor: theme.palette.background.default, "& th": { fontSize: 12, fontWeight: 600, padding: "12px 16px" } },
+    sizeColumn: { width: 120 },
+    dateColumn: { width: 200 },
+    actionColumn: { width: 100, [theme.breakpoints.down("xs")]: { width: 84 } },
+    hideAuto: { [theme.breakpoints.down("sm")]: { display: "none" } },
+    section: { marginBottom: 20, minWidth: 0 },
+    typeHeader: { fontSize: 12, fontWeight: 600, color: theme.palette.text.secondary, marginBottom: 10 },
+    grid: { display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 200px), 1fr))" },
+    compactGrid: { gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 290px), 1fr))" },
+    empty: { minHeight: 260, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, textAlign: "center", padding: 24, color: theme.palette.text.secondary },
+    emptyIcon: { fontSize: 48, color: theme.palette.text.disabled },
+    error: { color: theme.palette.error.main },
+    message: { maxWidth: 560, overflowWrap: "anywhere" },
 }));
 
 const keyMap = {
@@ -122,356 +44,85 @@ const keyMap = {
 };
 
 export default function Explorer({ share }) {
-    const { t } = useTranslation("application", { keyPrefix: "fileManager" });
-    const location = useLocation();
+    const classes = useStyles();
+    const { t, i18n } = useTranslation("application", { keyPrefix: "fileManager" });
+    const { pathname } = useLocation();
     const dispatch = useDispatch();
+    const view = useDirectoryView();
     const selected = useSelector((state) => state.explorer.selected);
     const search = useSelector((state) => state.explorer.search);
     const loading = useSelector((state) => state.viewUpdate.navigatorLoading);
-    const path = useSelector((state) => state.navigator.path);
-    const sortMethod = useSelector((state) => state.viewUpdate.sortMethod);
-    const navigatorErrorMsg = useSelector(
-        (state) => state.viewUpdate.navigatorErrorMsg
-    );
-    const navigatorError = useSelector(
-        (state) => state.viewUpdate.navigatorError
-    );
-    const viewMethod = useSelector(
-        (state) => state.viewUpdate.explorerViewMethod
-    );
+    const sort = useSelector((state) => state.viewUpdate.sortMethod);
+    const error = useSelector((state) => state.viewUpdate.navigatorError);
+    const errorMessage = useSelector((state) => state.viewUpdate.navigatorErrorMsg);
+    const method = useSelector((state) => state.viewUpdate.explorerViewMethod);
+    const home = pathHelper.isHomePage(pathname);
+    const filtered = Boolean(view.query.trim());
+    const chinese = i18n.language && i18n.language.startsWith("zh");
 
-    const OpenRemoveDialog = useCallback(() => dispatch(openRemoveDialog()), [
-        dispatch,
-    ]);
-    const SetSelectedTarget = useCallback(
-        (targets) => dispatch(setSelectedTarget(targets)),
-        [dispatch]
-    );
-    const ChangeContextMenu = useCallback(
-        (type, open) => dispatch(changeContextMenu(type, open)),
-        [dispatch]
-    );
-    const ChangeSortMethod = useCallback(
-        (method) => dispatch(explorer.actions.changeSortMethod(method)),
-        [dispatch]
-    );
-    const SelectAll = useCallback(
-        () => dispatch(explorer.actions.selectAll()),
-        [dispatch]
-    );
-
-    const { dirList, fileList, startIndex } = usePagination();
-
+    useEffect(() => { configure({ ignoreTags: ["input", "select", "textarea"] }); }, []);
     const handlers = {
-        DELETE_FILE: () => {
-            if (selected.length > 0 && !share) {
-                OpenRemoveDialog();
-            }
-        },
-        SELECT_ALL_SHOWED: (e) => {
-            e.preventDefault();
-            if (selected.length >= dirList.length + fileList.length) {
-                SetSelectedTarget([]);
-            } else {
-                SetSelectedTarget([...dirList, ...fileList]);
-            }
-        },
-        SELECT_ALL: (e) => {
-            e.preventDefault();
-            SelectAll();
-        },
-        DESELECT_ALL: (e) => {
-            e.preventDefault();
-            SetSelectedTarget([]);
-        },
+        DELETE_FILE: () => { if (selected.length && home && !loading && !error) dispatch(openRemoveDialog()); },
+        SELECT_ALL_SHOWED: (event) => { event.preventDefault(); if (!loading && !error) view.selectAll(view.items); },
+        SELECT_ALL: (event) => { event.preventDefault(); if (!loading && !error) view.selectAll(); },
+        DESELECT_ALL: (event) => { event.preventDefault(); view.setSelection([]); },
     };
-
-    useEffect(
-        () =>
-            configure({
-                ignoreTags: ["input", "select", "textarea"],
-            }),
-        []
-    );
-
-    const contextMenu = (e) => {
-        e.preventDefault();
-        if (!search && !pathHelper.isSharePage(location.pathname)) {
-            if (!loading) {
-                ChangeContextMenu("empty", true);
-            }
-        }
-    };
-
-    const ClickAway = (e) => {
-        const element = e.target;
-        if (element.dataset.clickaway) {
-            SetSelectedTarget([]);
-        }
-    };
-
-    const classes = useStyles();
-    const isHomePage = pathHelper.isHomePage(location.pathname);
-
-    const showView =
-        !loading && (dirList.length !== 0 || fileList.length !== 0);
-
-    const listView = useMemo(
-        () => (
-            <Table className={classes.table}>
-                <TableHead>
-                    <TableRow>
-                        <TableCell>
-                            <TableSortLabel
-                                active={
-                                    sortMethod === "namePos" ||
-                                    sortMethod === "nameRev"
-                                }
-                                direction={
-                                    sortMethod === "namePos" ? "asc" : "des"
-                                }
-                                onClick={() => {
-                                    ChangeSortMethod(
-                                        sortMethod === "namePos"
-                                            ? "nameRev"
-                                            : "namePos"
-                                    );
-                                }}
-                            >
-                                {t("name")}
-                                {sortMethod === "namePos" ||
-                                sortMethod === "nameRev" ? (
-                                    <span className={classes.visuallyHidden}>
-                                        {sortMethod === "nameRev"
-                                            ? "sorted descending"
-                                            : "sorted ascending"}
-                                    </span>
-                                ) : null}
-                            </TableSortLabel>
-                        </TableCell>
-                        <TableCell className={classes.hideAuto}>
-                            <TableSortLabel
-                                active={
-                                    sortMethod === "sizePos" ||
-                                    sortMethod === "sizeRes"
-                                }
-                                direction={
-                                    sortMethod === "sizePos" ? "asc" : "des"
-                                }
-                                onClick={() => {
-                                    ChangeSortMethod(
-                                        sortMethod === "sizePos"
-                                            ? "sizeRes"
-                                            : "sizePos"
-                                    );
-                                }}
-                            >
-                                {t("size")}
-                                {sortMethod === "sizePos" ||
-                                sortMethod === "sizeRes" ? (
-                                    <span className={classes.visuallyHidden}>
-                                        {sortMethod === "sizeRes"
-                                            ? "sorted descending"
-                                            : "sorted ascending"}
-                                    </span>
-                                ) : null}
-                            </TableSortLabel>
-                        </TableCell>
-                        <TableCell className={classes.hideAuto}>
-                            <TableSortLabel
-                                active={
-                                    sortMethod === "modifyTimePos" ||
-                                    sortMethod === "modifyTimeRev"
-                                }
-                                direction={
-                                    sortMethod === "modifyTimePos"
-                                        ? "asc"
-                                        : "des"
-                                }
-                                onClick={() => {
-                                    ChangeSortMethod(
-                                        sortMethod === "modifyTimePos"
-                                            ? "modifyTimeRev"
-                                            : "modifyTimePos"
-                                    );
-                                }}
-                            >
-                                {t("lastModified")}
-                                {sortMethod === "modifyTimePos" ||
-                                sortMethod === "modifyTimeRev" ? (
-                                    <span className={classes.visuallyHidden}>
-                                        {sortMethod === "sizeRes"
-                                            ? "sorted descending"
-                                            : "sorted ascending"}
-                                    </span>
-                                ) : null}
-                            </TableSortLabel>
-                        </TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {pathHelper.isMobile() && path !== "/" && (
-                        <ObjectIcon
-                            file={{
-                                type: "up",
-                                name: t("backToParentFolder"),
-                            }}
-                        />
-                    )}
-                    {dirList.map((value, index) => (
-                        <ObjectIcon
-                            key={value.id}
-                            file={value}
-                            index={startIndex + index}
-                        />
-                    ))}
-                    {fileList.map((value, index) => (
-                        <ObjectIcon
-                            key={value.id}
-                            file={value}
-                            index={startIndex + dirList.length + index}
-                        />
-                    ))}
-                </TableBody>
-            </Table>
-        ),
-        [dirList, fileList, path, sortMethod, ChangeSortMethod, classes]
-    );
-
-    const normalView = useMemo(
-        () => (
-            <div className={classes.flexFix}>
-                {dirList.length !== 0 && (
-                    <>
-                        <Typography
-                            data-clickAway={"true"}
-                            variant="body2"
-                            className={classes.typeHeader}
-                        >
-                            {t("folders")}
-                        </Typography>
-                        <Grid
-                            data-clickAway={"true"}
-                            container
-                            spacing={0}
-                            alignItems="flex-start"
-                            className={classes.gridContainer}
-                        >
-                            {dirList.map((value, index) => (
-                                <Grid
-                                    key={value.id}
-                                    item
-                                    className={classes.gridItem}
-                                >
-                                    <ObjectIcon
-                                        key={value.id}
-                                        file={value}
-                                        index={startIndex + index}
-                                    />
-                                </Grid>
-                            ))}
-                        </Grid>
-                    </>
-                )}
-                {fileList.length !== 0 && (
-                    <>
-                        <Typography
-                            data-clickAway={"true"}
-                            variant="body2"
-                            className={classes.typeHeader}
-                        >
-                            {t("files")}
-                        </Typography>
-                        <Grid
-                            data-clickAway={"true"}
-                            container
-                            spacing={0}
-                            alignItems="flex-start"
-                            className={classes.gridContainer}
-                        >
-                            {fileList.map((value, index) => (
-                                <Grid
-                                    className={classes.gridItem}
-                                    key={value.id}
-                                    item
-                                >
-                                    <ObjectIcon
-                                        key={value.id}
-                                        index={
-                                            startIndex + dirList.length + index
-                                        }
-                                        file={value}
-                                    />
-                                </Grid>
-                            ))}
-                        </Grid>
-                    </>
-                )}
+    const columns = [
+        { label: "name", asc: "namePos", desc: "nameRev" },
+        { label: "size", asc: "sizePos", desc: "sizeRes", className: classNames(classes.hideAuto, classes.sizeColumn) },
+        { label: "lastModified", asc: "modifyTimePos", desc: "modifyTimeRev", className: classNames(classes.hideAuto, classes.dateColumn) },
+    ];
+    const group = (items, label, compact) => items.length > 0 && (
+        <section className={classes.section} data-clickaway="true">
+            <Typography component="h3" className={classes.typeHeader} data-clickaway="true">{t(label)} ({items.length})</Typography>
+            <div className={classNames(classes.grid, { [classes.compactGrid]: compact })} data-clickaway="true">
+                {items.map((file) => <ObjectIcon key={file.type + ":" + file.id} file={file} />)}
             </div>
-        ),
-        [dirList, fileList, classes]
+        </section>
     );
-
-    const view = viewMethod === "list" ? listView : normalView;
 
     return (
         <div
-            onContextMenu={contextMenu}
-            onClick={ClickAway}
-            className={classNames(
-                {
-                    [classes.root]: viewMethod !== "list",
-                    [classes.rootTable]: viewMethod === "list",
-                    [classes.rootShare]: share,
-                },
-                classes.button
-            )}
+            data-clickaway="true"
+            className={classNames(classes.root, { [classes.list]: method === "list" })}
+            onClick={(event) => { if (event.target.dataset.clickaway) view.setSelection([]); }}
+            onContextMenu={(event) => {
+                event.preventDefault();
+                if (!search && home && !loading && !error) dispatch(changeContextMenu("empty", true));
+            }}
         >
             <GlobalHotKeys handlers={handlers} allowChanges keyMap={keyMap} />
             <ContextMenu share={share} />
-            <ImgPreivew />
-            {navigatorError && (
-                <Paper elevation={1} className={classes.errorBox}>
-                    <Typography variant="h5" component="h3">
-                        {t("listError")}
-                    </Typography>
-                    <Typography
-                        color={"textSecondary"}
-                        className={classes.errorMsg}
-                    >
-                        {navigatorErrorMsg.message}
-                    </Typography>
-                </Paper>
-            )}
-
-            {loading && !navigatorError && (
-                <div className={classes.loading}>
-                    <CircularProgress />
+            <ImgPreview />
+            {error ? (
+                <div className={classes.empty} role="alert">
+                    <ErrorOutlineIcon className={classes.error} />
+                    <Typography variant="subtitle1">{t("listError")}</Typography>
+                    <Typography variant="body2" className={classes.message}>{errorMessage && (errorMessage.message || String(errorMessage))}</Typography>
+                    <Button color="primary" onClick={() => dispatch(refreshFileList())}>{t("refresh")}</Button>
                 </div>
-            )}
-
-            {!search &&
-                isHomePage &&
-                dirList.length === 0 &&
-                fileList.length === 0 &&
-                !loading &&
-                !navigatorError && (
-                    <Nothing
-                        primary={t("dropFileHere")}
-                        secondary={t("orClickUploadButton")}
-                    />
-                )}
-            {((search &&
-                dirList.length === 0 &&
-                fileList.length === 0 &&
-                !loading &&
-                !navigatorError) ||
-                (dirList.length === 0 &&
-                    fileList.length === 0 &&
-                    !loading &&
-                    !navigatorError &&
-                    !isHomePage)) && <Nothing primary={t("nothingFound")} />}
-            {showView && view}
+            ) : loading ? (
+                <div className={classes.empty}><CircularProgress size={30} /></div>
+            ) : !view.total ? (
+                <div className={classes.empty} data-clickaway="true" role="status">
+                    {filtered || search ? <SearchIcon className={classes.emptyIcon} /> : <FolderOpenIcon className={classes.emptyIcon} />}
+                    <Typography variant="subtitle1">{filtered ? t("noFilterMatches", { defaultValue: chinese ? "\u6ca1\u6709\u5339\u914d\u7684\u6587\u4ef6\u6216\u6587\u4ef6\u5939" : "No matching files or folders" }) : home && !search ? t("dropFileHere") : t("nothingFound")}</Typography>
+                    {filtered ? <Button color="primary" onClick={() => view.setQuery("")}>{t("clearFilter", { defaultValue: chinese ? "\u6e05\u9664\u7b5b\u9009" : "Clear filter" })}</Button>
+                        : home && !search && <Typography variant="body2">{t("orClickUploadButton")}</Typography>}
+                </div>
+            ) : method === "list" ? (
+                <Table size="small" className={classes.table}>
+                    <TableHead className={classes.head}>
+                        <TableRow>
+                            {columns.map((column) => <TableCell key={column.label} className={column.className} sortDirection={sort === column.asc ? "asc" : sort === column.desc ? "desc" : false}>
+                                <TableSortLabel active={sort === column.asc || sort === column.desc} direction={sort === column.desc ? "desc" : "asc"} onClick={() => dispatch(changeSortMethod(sort === column.asc ? column.desc : column.asc))}>{t(column.label)}</TableSortLabel>
+                            </TableCell>)}
+                            <TableCell align="right" className={classes.actionColumn}>{t("actions", { defaultValue: chinese ? "\u64cd\u4f5c" : "Actions" })}</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>{view.items.map((file) => <ObjectIcon key={file.type + ":" + file.id} file={file} />)}</TableBody>
+                </Table>
+            ) : <>{group(view.dirList, "folders", true)}{group(view.fileList, "files", method === "smallIcon")}</>}
         </div>
     );
 }

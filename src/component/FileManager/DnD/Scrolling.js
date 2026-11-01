@@ -1,63 +1,43 @@
-import { useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { throttle } from "lodash";
 
-const useDragScrolling = () => {
-    const isScrolling = useRef(false);
-    const target = document.querySelector("#explorer-container");
-
-    const goDown = () => {
-        target.scrollTop += 10;
-
-        const { offsetHeight, scrollTop, scrollHeight } = target;
-        const isScrollEnd = offsetHeight + scrollTop >= scrollHeight;
-
-        if (isScrolling.current && !isScrollEnd) {
-            window.requestAnimationFrame(goDown);
-        }
-    };
-
-    const goUp = () => {
-        target.scrollTop -= 10;
-
-        if (isScrolling.current && target.scrollTop > 0) {
-            window.requestAnimationFrame(goUp);
-        }
-    };
-
-    const onDragOver = (event) => {
-        const isMouseOnTop = event.clientY < 100;
-        const isMouseOnDown = window.innerHeight - event.clientY < 100;
-
-        if (!isScrolling.current && (isMouseOnTop || isMouseOnDown)) {
-            isScrolling.current = true;
-
-            if (isMouseOnTop) {
-                window.requestAnimationFrame(goUp);
+export default function useDragScrolling() {
+    const scrolling = useRef({ direction: 0, frame: null });
+    const onDragOver = useMemo(() => {
+        const step = () => {
+            scrolling.current.frame = null;
+            const target = document.querySelector("#explorer-container");
+            if (!target || !scrolling.current.direction) return;
+            const before = target.scrollTop;
+            const limit = Math.max(0, target.scrollHeight - target.clientHeight);
+            target.scrollTop = Math.max(0, Math.min(limit, before + scrolling.current.direction * 10));
+            if (target.scrollTop !== before) scrolling.current.frame = window.requestAnimationFrame(step);
+        };
+        return throttle((event) => {
+            const target = document.querySelector("#explorer-container");
+            if (!target) return;
+            const bounds = target.getBoundingClientRect();
+            scrolling.current.direction = event.clientY < bounds.top + 64 ? -1
+                : event.clientY > Math.min(bounds.bottom, window.innerHeight) - 64 ? 1 : 0;
+            if (scrolling.current.direction && scrolling.current.frame === null) {
+                scrolling.current.frame = window.requestAnimationFrame(step);
             }
+        }, 100);
+    }, []);
 
-            if (isMouseOnDown) {
-                window.requestAnimationFrame(goDown);
-            }
-        } else if (!isMouseOnTop && !isMouseOnDown) {
-            isScrolling.current = false;
-        }
-    };
+    const removeEventListenerForWindow = useCallback(() => {
+        window.removeEventListener("dragover", onDragOver, false);
+        onDragOver.cancel();
+        scrolling.current.direction = 0;
+        if (scrolling.current.frame !== null) window.cancelAnimationFrame(scrolling.current.frame);
+        scrolling.current.frame = null;
+    }, [onDragOver]);
 
-    const throttleOnDragOver = throttle(onDragOver, 300);
+    useEffect(() => removeEventListenerForWindow, [removeEventListenerForWindow]);
 
-    const addEventListenerForWindow = () => {
-        window.addEventListener("dragover", throttleOnDragOver, false);
-    };
+    const addEventListenerForWindow = useCallback(() => {
+        window.addEventListener("dragover", onDragOver, false);
+    }, [onDragOver]);
 
-    const removeEventListenerForWindow = () => {
-        window.removeEventListener("dragover", throttleOnDragOver, false);
-        isScrolling.current = false;
-    };
-
-    return {
-        addEventListenerForWindow,
-        removeEventListenerForWindow,
-    };
-};
-
-export default useDragScrolling;
+    return { addEventListenerForWindow, removeEventListenerForWindow };
+}

@@ -1,3 +1,29 @@
+Requirements ledger: [REQUIREMENTS.md](REQUIREMENTS.md), maintained privately and excluded from public Git.
+
+# Cloudreve Custom Frontend (3.8.3)
+
+This fork starts from `5d4d01a797a1ba2d6866799684bf05de20006e31`, the frontend pinned by Cloudreve 3.8.3. It preserves existing APIs, permissions and URL formats while sharing a coherent visual system across the file manager, authentication, settings and administration.
+
+- `public/share-ui/`: accepted download-focused share page, loaded only for `/s/:id`; `?classic=1` and preview routes keep the application UI.
+- `src/index.js`: small route entry; `src/application.js`: the original application initialization.
+- `src/theme.js`: shared light/dark theme and existing preference compatibility.
+- `src/component/FileManager/`: file workflows and directory filtering.
+- `public/service-worker.js`: retires legacy Workbox caches without caching private pages.
+
+Use the backend fork's **Custom build** GitHub Actions workflow to build and package this exact submodule revision. Application dependency versions remain locked in `yarn.lock`.
+
+```sh
+corepack prepare yarn@1.22.22 --activate
+yarn install --frozen-lockfile --ignore-engines
+node --test scripts/*.test.cjs
+yarn test --watchAll=false --runInBand
+CI=false GENERATE_SOURCEMAP=false NODE_OPTIONS=--openssl-legacy-provider yarn build
+```
+
+The legacy build toolchain can emit upstream deprecation/lint warnings. Tests and build errors must still be resolved. No production data, private settings or credentials belong in this repository.
+
+## Upstream Development Notes
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts

@@ -8,13 +8,26 @@ import MoreIcon from "@material-ui/icons/MoreHoriz";
 
 const useStyles = makeStyles((theme) => ({
     expandMore: {
-        color: "#8d8d8d",
+        color: theme.palette.text.secondary,
     },
     active: {
         boxShadow: "0 0 0 2px " + theme.palette.primary.light,
     },
     button: {
         textTransform: "none",
+        borderRadius: 8,
+        minWidth: 36,
+        maxWidth: 240,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        color: theme.palette.text.primary,
+    },
+    label: {
+        minWidth: 0,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
     },
 }));
 
@@ -63,12 +76,12 @@ export default function PathButton(props) {
                     classes.button
                 )}
                 component="span"
-                title={props.title}
+                title={props.title || (props.more ? undefined : String(props.folder))}
             >
                 {props.more && <MoreIcon />}
                 {!props.more && (
                     <>
-                        {props.folder}
+                        <span className={classes.label}>{props.folder}</span>
                         {props.last && (
                             <ExpandMore className={classes.expandMore} />
                         )}
