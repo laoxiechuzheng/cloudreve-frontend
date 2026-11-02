@@ -322,6 +322,13 @@
     "dropFileHere": "鬆開滑鼠開始上傳"
   },
   "share": {
+    "editLink": "修改連結",
+    "editLinkTitle": "修改分享連結",
+    "linkKey": "連結",
+    "linkKeyHelp": "可用字母、數字、- 和 _，最多 64 個字元。留空恢復為預設連結。已刪除分享用過的連結可以重新使用，換檔案後把新分享改成舊連結即可。",
+    "linkKeyInvalid": "只能用字母、數字、- 和 _，最多 64 個字元",
+    "saveLink": "儲存",
+    "linkChanged": "連結已改為 {{url}}",
     "expireInXDays": "{{num}} 天後到期",
     "days":"{{count}} day",
     "days_other":"{{count}} days",

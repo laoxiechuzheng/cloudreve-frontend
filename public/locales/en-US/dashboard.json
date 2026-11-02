@@ -785,6 +785,9 @@
     "unlink": "Unlink (Keep physical file)"
   },
   "share": {
+    "link": "Link",
+    "editLink": "Edit link",
+    "linkChanged": "Link changed to {{url}}",
     "deleted": "Share deleted.",
     "objectName": "Object name",
     "views": "Views",

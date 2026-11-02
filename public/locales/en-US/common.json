@@ -68,6 +68,8 @@
     "40069": "Incorrect password.",
     "40070": "This share doesn't support preview.",
     "40071": "Invalid signature.",
+    "40072": "This link is invalid or not available (letters, digits, - and _ only)",
+    "40073": "This link is already used by the share of \"{{message}}\"",
     "50001": "Database operation failed. ({{message}})",
     "50002": "Failed to sign the URL or request. ({{message}})",
     "50004": "I/O operation failed. ({{message}})",

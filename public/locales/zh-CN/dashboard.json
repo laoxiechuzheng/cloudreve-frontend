@@ -785,6 +785,9 @@
     "unlink": "解除关联（保留物理文件）"
   },
   "share": {
+    "link": "链接",
+    "editLink": "修改链接",
+    "linkChanged": "链接已改为 {{url}}",
     "deleted": "分享已删除",
     "objectName": "对象名",
     "views": "浏览",

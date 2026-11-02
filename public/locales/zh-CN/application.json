@@ -322,6 +322,13 @@
     "dropFileHere": "松开鼠标开始上传"
   },
   "share": {
+    "editLink": "修改链接",
+    "editLinkTitle": "修改分享链接",
+    "linkKey": "链接",
+    "linkKeyHelp": "可用字母、数字、- 和 _，最多 64 个字符。留空恢复为默认链接。已删除分享用过的链接可以重新使用，换文件后把新分享改成旧链接即可。",
+    "linkKeyInvalid": "只能用字母、数字、- 和 _，最多 64 个字符",
+    "saveLink": "保存",
+    "linkChanged": "链接已改为 {{url}}",
     "expireInXDays": "{{num}} 天后到期",
     "days":"{{count}} day",
     "days_other":"{{count}} days",

@@ -17,7 +17,7 @@ import TableSortLabel from "@material-ui/core/TableSortLabel";
 import Toolbar from "@material-ui/core/Toolbar";
 import Tooltip from "@material-ui/core/Tooltip";
 import Typography from "@material-ui/core/Typography";
-import { Delete, FilterList } from "@material-ui/icons";
+import { Delete, FilterList, Link as LinkIcon } from "@material-ui/icons";
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { toggleSnackbar } from "../../../redux/explorer";
@@ -25,6 +25,7 @@ import API from "../../../middleware/Api";
 import ShareFilter from "../Dialogs/ShareFilter";
 import { formatLocalTime } from "../../../utils/datetime";
 import { useTranslation } from "react-i18next";
+import EditShareLink, { shareLinkPrefix } from "../../Modals/EditShareLink";
 
 const useStyles = makeStyles((theme) => ({
     root: {
@@ -86,6 +87,7 @@ export default function Share() {
     const [filterDialog, setFilterDialog] = useState(false);
     const [selected, setSelected] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [editLink, setEditLink] = useState(null);
 
     const dispatch = useDispatch();
     const ToggleSnackbar = useCallback(
@@ -131,6 +133,19 @@ export default function Share() {
                 setLoading(false);
             });
     };
+
+    const saveShareLink = (share, key) =>
+        API.post("/admin/share/key", { id: share.ID, key }).then(
+            (response) => {
+                setIds({ ...ids, [share.ID]: response.data });
+                ToggleSnackbar(
+                    "top",
+                    "right",
+                    t("linkChanged", { url: shareLinkPrefix() + response.data }),
+                    "success"
+                );
+            }
+        );
 
     const deleteBatch = () => {
         setLoading(true);
@@ -180,6 +195,13 @@ export default function Share() {
 
     return (
         <div>
+            <EditShareLink
+                open={editLink !== null}
+                onClose={() => setEditLink(null)}
+                currentKey={editLink ? ids[editLink.ID] : ""}
+                sourceName={editLink ? editLink.SourceName : ""}
+                onSave={(key) => saveShareLink(editLink, key)}
+            />
             <ShareFilter
                 filter={filter}
                 open={filterDialog}
@@ -313,6 +335,9 @@ export default function Share() {
                                         ) : null}
                                     </TableSortLabel>
                                 </TableCell>
+                                <TableCell style={{ minWidth: 120 }}>
+                                    {t("link")}
+                                </TableCell>
                                 <TableCell style={{ minWidth: 70 }}>
                                     {tDashboard("policy.type")}
                                 </TableCell>
@@ -425,6 +450,14 @@ export default function Share() {
                                             {row.SourceName}
                                         </Link>
                                     </TableCell>
+                                    <TableCell
+                                        style={{
+                                            wordBreak: "break-all",
+                                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+                                        }}
+                                    >
+                                        /s/{ids[row.ID]}
+                                    </TableCell>
                                     <TableCell>
                                         {row.Password === ""
                                             ? t("public")
@@ -460,7 +493,16 @@ export default function Share() {
                                     <TableCell>
                                         {formatLocalTime(row.CreatedAt)}
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell style={{ whiteSpace: "nowrap" }}>
+                                        <Tooltip title={t("editLink")}>
+                                            <IconButton
+                                                aria-label={t("editLink")}
+                                                onClick={() => setEditLink(row)}
+                                                size={"small"}
+                                            >
+                                                <LinkIcon />
+                                            </IconButton>
+                                        </Tooltip>
                                         <Tooltip
                                             title={tDashboard("node.delete")}
                                         >

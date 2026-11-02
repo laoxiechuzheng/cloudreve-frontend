@@ -322,6 +322,13 @@
     "dropFileHere": "Drop file to upload"
   },
   "share": {
+    "editLink": "Edit link",
+    "editLinkTitle": "Edit share link",
+    "linkKey": "Link",
+    "linkKeyHelp": "Letters, digits, - and _, up to 64 characters. Leave empty to restore the default link. Links of deleted shares can be reused: after replacing a file, give the new share the old link.",
+    "linkKeyInvalid": "Only letters, digits, - and _, up to 64 characters",
+    "saveLink": "Save",
+    "linkChanged": "Link changed to {{url}}",
     "expireInXDays": "Expire in $t(share.days, {\"count\": {{num}} })",
     "days":"{{count}} day",
     "days_other":"{{count}} days",

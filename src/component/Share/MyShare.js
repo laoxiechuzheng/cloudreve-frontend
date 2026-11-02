@@ -7,6 +7,7 @@ import LockIcon from "@material-ui/icons/Lock";
 import UnlockIcon from "@material-ui/icons/LockOpen";
 import EyeIcon from "@material-ui/icons/RemoveRedEye";
 import DeleteIcon from "@material-ui/icons/Delete";
+import LinkIcon from "@material-ui/icons/Link";
 
 import {
     Avatar,
@@ -39,6 +40,7 @@ import { formatLocalTime } from "../../utils/datetime";
 import { toggleSnackbar } from "../../redux/explorer";
 import Nothing from "../Placeholder/Nothing";
 import { withTranslation } from "react-i18next";
+import EditShareLink, { shareLinkPrefix } from "../Modals/EditShareLink";
 
 const styles = (theme) => ({
     cardContainer: {
@@ -87,6 +89,11 @@ const styles = (theme) => ({
         textAlign: "right",
         marginTop: 5,
     },
+    shareKey: {
+        display: "block",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        wordBreak: "break-all",
+    },
 });
 const mapStateToProps = () => {
     return {};
@@ -107,6 +114,7 @@ class MyShareCompoment extends Component {
         shareList: [],
         showPwd: null,
         orderBy: "created_at DESC",
+        editLink: null,
     };
 
     componentDidMount = () => {
@@ -202,6 +210,28 @@ class MyShareCompoment extends Component {
                 );
             });
     };
+
+    // 改链接后列表里的 key 随之更新（之后的操作都用新 key）
+    saveShareLink = (share, key) =>
+        API.patch("/share/" + share.key, {
+            prop: "custom_key",
+            value: key,
+        }).then((response) => {
+            const newKey = response.data;
+            this.setState({
+                shareList: this.state.shareList.map((value) =>
+                    value.key === share.key ? { ...value, key: newKey } : value
+                ),
+            });
+            this.props.toggleSnackbar(
+                "top",
+                "right",
+                this.props.t("share.linkChanged", {
+                    url: shareLinkPrefix() + newKey,
+                }),
+                "success"
+            );
+        });
 
     loadList = (page, orderBy) => {
         const order = orderBy.split(" ");
@@ -346,6 +376,11 @@ class MyShareCompoment extends Component {
                                     }
                                     subheader={
                                         <span>
+                                            <span
+                                                className={classes.shareKey}
+                                            >
+                                                /s/{value.key}
+                                            </span>
                                             {formatLocalTime(value.create_date)}
                                             {this.isExpired(value) && (
                                                 <Chip
@@ -462,6 +497,21 @@ class MyShareCompoment extends Component {
                                     </Tooltip>
                                     <Tooltip
                                         placement="top"
+                                        title={t("share.editLink")}
+                                    >
+                                        <IconButton
+                                            aria-label={t("share.editLink")}
+                                            onClick={() =>
+                                                this.setState({
+                                                    editLink: value,
+                                                })
+                                            }
+                                        >
+                                            <LinkIcon fontSize={"small"} />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip
+                                        placement="top"
                                         title={t("share.cancelShare")}
                                         onClick={() =>
                                             this.removeShare(value.key)
@@ -483,6 +533,21 @@ class MyShareCompoment extends Component {
                         color="secondary"
                     />
                 </div>{" "}
+                <EditShareLink
+                    open={this.state.editLink !== null}
+                    onClose={() => this.setState({ editLink: null })}
+                    currentKey={
+                        this.state.editLink ? this.state.editLink.key : ""
+                    }
+                    sourceName={
+                        this.state.editLink && this.state.editLink.source
+                            ? this.state.editLink.source.name
+                            : ""
+                    }
+                    onSave={(key) =>
+                        this.saveShareLink(this.state.editLink, key)
+                    }
+                />
                 <Dialog
                     open={this.state.showPwd !== null}
                     onClose={this.handleClose}
