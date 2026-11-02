@@ -57,6 +57,35 @@ it("shows the full link, blocks invalid or unchanged keys and saves the trimmed 
     expect(onClose).toHaveBeenCalled();
 });
 
+it("uses the given prefix, suffix, title and help instead of the share defaults", () => {
+    render({
+        currentKey: "NR6cM", prefix: "https://pan.example.test/f/", suffix: "/deploy.sh",
+        title: "Edit source link", help: "Keeps working after rename",
+    });
+    const text = document.body.textContent;
+    expect(text).toContain("https://pan.example.test/f/");
+    expect(text).toContain("/deploy.sh");
+    expect(text).toContain("Edit source link");
+    expect(text).toContain("Keeps working after rename");
+    expect(text).not.toContain("Edit share link");
+    expect(text).not.toContain(window.location.origin + "/s/");
+    expect(input().value).toBe("NR6cM");
+});
+
+it("moves the prefix and suffix into a preview line under the field on phones", () => {
+    const matchMedia = window.matchMedia;
+    window.matchMedia = () => ({ matches: true, addListener: jest.fn(), removeListener: jest.fn() });
+    try {
+        render({ currentKey: "NR6cM", prefix: "https://pan.example.test/f/", suffix: "/deploy.sh" });
+        expect(document.body.querySelector(".MuiInputAdornment-root")).toBeNull();
+        expect(document.body.textContent).toContain("https://pan.example.test/f/NR6cM/deploy.sh");
+        type("98k-win");
+        expect(document.body.textContent).toContain("https://pan.example.test/f/98k-win/deploy.sh");
+    } finally {
+        window.matchMedia = matchMedia;
+    }
+});
+
 it("allows clearing back to the default link and keeps the dialog open on a server error", async () => {
     const onSave = jest.fn(() => Promise.reject(new Error("Taken by old.exe")));
     const onClose = jest.fn();

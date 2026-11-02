@@ -34,6 +34,7 @@ import { getDownloadURL } from "../../services/file";
 import { Trans, withTranslation } from "react-i18next";
 import RemoteDownload from "../Modals/RemoteDownload";
 import Delete from "../Modals/Delete";
+import GetSource from "../Modals/GetSource";
 
 const styles = (theme) => ({
     wrapper: {
@@ -400,18 +401,6 @@ class ModalsCompoment extends Component {
         this.setState({ [name]: event.target.checked });
     };
 
-    copySource = () => {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(this.props.modalsStatus.getSource);
-            this.props.toggleSnackbar(
-                "top",
-                "right",
-                this.props.t("modals.linkCopied"),
-                "info"
-            );
-        }
-    };
-
     render() {
         const { classes, t } = this.props;
 
@@ -419,36 +408,11 @@ class ModalsCompoment extends Component {
             <div>
                 <Loading />
                 <OptionSelector />
-                <Dialog
-                    open={this.props.modalsStatus.getSource}
+                <GetSource
+                    source={this.props.modalsStatus.getSource}
+                    selected={this.props.selected}
                     onClose={this.onClose}
-                    aria-labelledby="form-dialog-title"
-                    fullWidth
-                >
-                    <DialogTitle id="form-dialog-title">
-                        {t("modals.getSourceLinkTitle")}
-                    </DialogTitle>
-
-                    <DialogContent>
-                        <TextField
-                            autoFocus
-                            inputProps={{ readonly: true }}
-                            label={t("modals.sourceLink")}
-                            multiline
-                            value={this.props.modalsStatus.getSource}
-                            variant="outlined"
-                            fullWidth
-                        />
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={this.copySource} color="secondary">
-                            {t("copyToClipboard", { ns: "common" })}
-                        </Button>
-                        <Button onClick={this.onClose}>
-                            {t("close", { ns: "common" })}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
+                />
                 <Dialog
                     open={this.props.modalsStatus.createNewFolder}
                     onClose={this.onClose}

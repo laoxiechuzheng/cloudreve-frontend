@@ -9,7 +9,9 @@ import {
     InputAdornment,
     TextField,
     Typography,
+    useMediaQuery,
 } from "@material-ui/core";
+import { useTheme } from "@material-ui/core/styles";
 import { useTranslation } from "react-i18next";
 
 // 与后端 models.shareKeyPattern 一致；空值表示恢复为默认（HashID）链接
@@ -19,19 +21,27 @@ export function shareLinkPrefix() {
     return window.location.origin + "/s/";
 }
 
-// 修改分享链接（/s/ 之后的部分）。onSave(key) 返回 Promise，resolve 为生效后的链接标识。
+// 修改链接标识（默认是分享链接 /s/ 之后的部分）。onSave(key) 返回 Promise，resolve 为生效后的链接标识。
+// 文件外链等场景用 prefix / suffix / title / help 覆盖默认的分享文案和链接前缀。
 export default function EditShareLink({
     open,
     onClose,
     sourceName,
     currentKey,
     onSave,
+    prefix,
+    suffix,
+    title,
+    help,
 }) {
     const { t } = useTranslation("application", { keyPrefix: "share" });
     const { t: tCommon } = useTranslation("common");
     const [key, setKey] = useState(currentKey || "");
     const [error, setError] = useState("");
     const [saving, setSaving] = useState(false);
+    // 手机上前缀和后缀会把输入框挤没，改为在输入框下方显示完整链接
+    const theme = useTheme();
+    const narrow = useMediaQuery(theme.breakpoints.down("xs"));
 
     useEffect(() => {
         if (open) {
@@ -44,6 +54,10 @@ export default function EditShareLink({
     const trimmed = key.trim();
     const invalid = trimmed !== "" && !SHARE_KEY_PATTERN.test(trimmed);
     const unchanged = trimmed === (currentKey || "");
+    const preview =
+        (prefix || shareLinkPrefix()) +
+        (trimmed || currentKey || "") +
+        (suffix || "");
 
     const submit = (e) => {
         e.preventDefault();
@@ -63,7 +77,7 @@ export default function EditShareLink({
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <form onSubmit={submit}>
-                <DialogTitle>{t("editLinkTitle")}</DialogTitle>
+                <DialogTitle>{title || t("editLinkTitle")}</DialogTitle>
                 <DialogContent>
                     {sourceName && (
                         <Typography
@@ -88,7 +102,7 @@ export default function EditShareLink({
                         helperText={
                             invalid
                                 ? t("linkKeyInvalid")
-                                : error || t("linkKeyHelp")
+                                : error || help || t("linkKeyHelp")
                         }
                         inputProps={{
                             maxLength: 64,
@@ -97,13 +111,40 @@ export default function EditShareLink({
                             autoComplete: "off",
                         }}
                         InputProps={{
-                            startAdornment: (
+                            startAdornment: narrow ? undefined : (
                                 <InputAdornment position="start">
-                                    {shareLinkPrefix()}
+                                    {prefix || shareLinkPrefix()}
                                 </InputAdornment>
                             ),
+                            endAdornment:
+                                suffix && !narrow ? (
+                                    <InputAdornment
+                                        position="end"
+                                        title={suffix}
+                                        style={{ maxWidth: "35%" }}
+                                    >
+                                        <span
+                                            style={{
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                            }}
+                                        >
+                                            {suffix}
+                                        </span>
+                                    </InputAdornment>
+                                ) : undefined,
                         }}
                     />
+                    {narrow && (
+                        <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            component="div"
+                            style={{ wordBreak: "break-all" }}
+                        >
+                            {preview}
+                        </Typography>
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={onClose}>

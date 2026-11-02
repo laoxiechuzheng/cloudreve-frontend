@@ -8,7 +8,8 @@ import ChainedBackend, { ChainedBackendOptions } from "i18next-chained-backend";
 import LanguageDetector from "i18next-browser-languagedetector";
 import LocalStorageBackend from "i18next-localstorage-backend";
 
-declare let ASSETS_VERSION: string;
+// Content hash of public/locales, injected by webpack (config/webpack.config.js)
+declare let LOCALES_VERSION: string;
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore
@@ -32,9 +33,11 @@ i18n.use(ChainedBackend)
             backendOptions: [
                 {
                     expirationTime: 7 * 24 * 60 * 60 * 1000, // 7 days
+                    // Cached translations are dropped as soon as the locale files change
+                    defaultVersion: LOCALES_VERSION,
                 },
                 {
-                    queryStringParams: { v: ASSETS_VERSION },
+                    queryStringParams: { v: LOCALES_VERSION },
                     loadPath: "/locales/{{lng}}/{{ns}}.json",
                 },
             ],

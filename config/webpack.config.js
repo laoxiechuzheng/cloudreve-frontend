@@ -48,6 +48,29 @@ const imageInlineSizeLimit = parseInt(
 // Check if TypeScript is setup
 const useTypeScript = fs.existsSync(paths.appTsConfig);
 
+// Content hash of public/locales. The browser keeps translations in localStorage for 7 days
+// and ASSETS_VERSION stays at the upstream version, so new strings would show as raw keys
+// after an upgrade unless the cache version follows the translation files.
+function localesVersion() {
+  const root = path.join(paths.appPublic, 'locales');
+  const hash = crypto.createHash('sha256');
+  const walk = (dir) =>
+    fs
+      .readdirSync(dir, { withFileTypes: true })
+      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+      .forEach((entry) => {
+        const file = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(file);
+        } else {
+          hash.update(path.relative(root, file).split(path.sep).join('/'));
+          hash.update(fs.readFileSync(file));
+        }
+      });
+  walk(root);
+  return hash.digest('hex').slice(0, 12);
+}
+
 // style files regexes
 const cssRegex = /\.css$/;
 const cssModuleRegex = /\.module\.css$/;
@@ -655,6 +678,7 @@ module.exports = function(webpackEnv) {
         ASSETS_VERSION: JSON.stringify(
             require("../package.json").version
         ),
+        LOCALES_VERSION: JSON.stringify(localesVersion()),
       }),
       // public/service-worker.js retires old Workbox caches without caching pages.
       // TypeScript type checking

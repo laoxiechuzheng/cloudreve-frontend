@@ -38,7 +38,12 @@ import Tooltip from "@material-ui/core/Tooltip";
 import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
 import ToggleIcon from "material-ui-toggle-icon";
+import LinkIcon from "@material-ui/icons/Link";
 import { useTranslation } from "react-i18next";
+import EditShareLink, {
+    SHARE_KEY_PATTERN,
+    shareLinkPrefix,
+} from "./EditShareLink";
 
 const useStyles = makeStyles((theme) => ({
     widthAnimation: {},
@@ -122,28 +127,40 @@ export default function CreatShare(props) {
     const lastSubmit = useRef(null);
     const [expanded, setExpanded] = React.useState(false);
     const [shareURL, setShareURL] = React.useState("");
+    const [editingLink, setEditingLink] = React.useState(false);
     const [values, setValues] = React.useState({
         password: "",
         downloads: 1,
         expires: 24 * 3600,
         showPassword: false,
+        customKey: "",
     });
     const [shareOption, setShareOption] = React.useState({
         password: false,
         expire: false,
         preview: true,
+        customKey: false,
     });
     const [customExpires, setCustomExpires] = React.useState(3600);
     const [customDownloads, setCustomDownloads] = React.useState(10);
 
+    // 自定义链接：留空用默认（HashID）链接
+    const customKey = shareOption.customKey ? values.customKey.trim() : "";
+    const customKeyInvalid =
+        customKey !== "" && !SHARE_KEY_PATTERN.test(customKey);
+
+    // 已创建分享的链接拆成前缀（站点 + /s/）和链接标识
+    const keyStart = shareURL.lastIndexOf("/s/") + 3;
+    const sharePrefix = shareURL.slice(0, keyStart);
+    const shareKey = shareURL.slice(keyStart);
+
     const handleChange = (prop) => (event) => {
-        // 输入密码
-        if (prop === "password") {
-            if (event.target.value === "") {
-                setShareOption({ ...shareOption, password: false });
-            } else {
-                setShareOption({ ...shareOption, password: true });
-            }
+        // 输入密码或自定义链接时同步勾选状态
+        if (prop === "password" || prop === "customKey") {
+            setShareOption({
+                ...shareOption,
+                [prop]: event.target.value !== "",
+            });
         }
 
         setValues({ ...values, [prop]: event.target.value });
@@ -174,10 +191,13 @@ export default function CreatShare(props) {
         if (!shareOption[prop]) {
             handleExpand(prop)(null, true);
         }
-        if (prop === "password" && shareOption[prop]) {
+        if (
+            (prop === "password" || prop === "customKey") &&
+            shareOption[prop]
+        ) {
             setValues({
                 ...values,
-                password: "",
+                [prop]: "",
             });
         }
         setShareOption({ ...shareOption, [prop]: !shareOption[prop] });
@@ -185,10 +205,27 @@ export default function CreatShare(props) {
 
     const onClose = () => {
         props.onClose();
+        setEditingLink(false);
         setTimeout(() => {
             setShareURL("");
         }, 500);
     };
+
+    // 创建后修改链接，对话框里展示的链接随之更新
+    const saveShareLink = (key) =>
+        API.patch("/share/" + shareKey, {
+            prop: "custom_key",
+            value: key,
+        }).then((response) => {
+            const url = sharePrefix + response.data;
+            setShareURL(url);
+            ToggleSnackbar(
+                "top",
+                "right",
+                t("share.linkChanged", { url }),
+                "success"
+            );
+        });
 
     const senLink = () => {
         if (navigator.share) {
@@ -210,6 +247,9 @@ export default function CreatShare(props) {
 
     const submitShare = (e) => {
         e.preventDefault();
+        if (customKeyInvalid) {
+            return;
+        }
         props.setModalsLoading(true);
         const submitFormBody = {
             id: props.selected[0].id,
@@ -226,6 +266,9 @@ export default function CreatShare(props) {
                     : values.expires,
             preview: shareOption.preview,
         };
+        if (customKey !== "") {
+            submitFormBody.custom_key = customKey;
+        }
         lastSubmit.current = submitFormBody;
 
         API.post("/share", submitFormBody)
@@ -236,11 +279,15 @@ export default function CreatShare(props) {
                     downloads: 1,
                     expires: 24 * 3600,
                     showPassword: false,
+                    customKey: "",
                 });
                 setShareOption({
                     password: false,
                     expire: false,
+                    preview: true,
+                    customKey: false,
                 });
+                setExpanded(false);
                 props.setModalsLoading(false);
             })
             .catch((error) => {
@@ -517,6 +564,60 @@ export default function CreatShare(props) {
                                 </Typography>
                             </ExpansionPanelDetails>
                         </ExpansionPanel>
+                        <ExpansionPanel
+                            expanded={expanded === "customKey"}
+                            onChange={handleExpand("customKey")}
+                        >
+                            <ExpansionPanelSummary
+                                aria-controls="panel1a-content"
+                                id="panel1a-header"
+                            >
+                                <ListItem button>
+                                    <ListItemIcon>
+                                        <LinkIcon />
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary={t("modals.customShareLink")}
+                                    />
+                                    <ListItemSecondaryAction>
+                                        <Checkbox
+                                            checked={shareOption.customKey}
+                                            onChange={handleCheck("customKey")}
+                                        />
+                                    </ListItemSecondaryAction>
+                                </ListItem>
+                            </ExpansionPanelSummary>
+                            <ExpansionPanelDetails>
+                                <TextField
+                                    id="share-custom-key"
+                                    fullWidth
+                                    variant="outlined"
+                                    color="secondary"
+                                    label={t("share.linkKey")}
+                                    value={values.customKey}
+                                    onChange={handleChange("customKey")}
+                                    error={customKeyInvalid}
+                                    helperText={
+                                        customKeyInvalid
+                                            ? t("share.linkKeyInvalid")
+                                            : t("modals.customShareLinkHelp")
+                                    }
+                                    inputProps={{
+                                        maxLength: 64,
+                                        spellCheck: false,
+                                        autoCapitalize: "off",
+                                        autoComplete: "off",
+                                    }}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                {shareLinkPrefix()}
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </ExpansionPanelDetails>
+                        </ExpansionPanel>
                     </List>
                     <Divider />
                 </>
@@ -537,6 +638,11 @@ export default function CreatShare(props) {
 
             <DialogActions>
                 {shareURL !== "" && (
+                    <Button onClick={() => setEditingLink(true)}>
+                        {t("share.editLink")}
+                    </Button>
+                )}
+                {shareURL !== "" && (
                     <div className={classes.wrapper}>
                         <Button onClick={senLink} color="secondary">
                             {t("modals.sendLink")}
@@ -552,7 +658,7 @@ export default function CreatShare(props) {
                         <Button
                             onClick={submitShare}
                             color="secondary"
-                            disabled={props.modalsLoading}
+                            disabled={props.modalsLoading || customKeyInvalid}
                         >
                             {t("modals.createShareLink")}
                             {props.modalsLoading && (
@@ -565,6 +671,16 @@ export default function CreatShare(props) {
                     </div>
                 )}
             </DialogActions>
+            {shareURL !== "" && (
+                <EditShareLink
+                    open={editingLink}
+                    onClose={() => setEditingLink(false)}
+                    sourceName={props.selected[0] && props.selected[0].name}
+                    currentKey={shareKey}
+                    prefix={sharePrefix}
+                    onSave={saveShareLink}
+                />
+            )}
         </Dialog>
     );
 }
